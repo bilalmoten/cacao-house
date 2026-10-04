@@ -12,3 +12,9 @@ Six requested fixes on the existing Cacao House site:
 Verification: 55 tests passed; TypeScript, production build and whitespace checks passed. Targeted Chrome mobile checks at 390×844 and 402×720 confirmed accurate moving callout anchors, no callout overlap/horizontal overflow, 44 px targets, missing 46.5 kg filled as 47 without changing save or supplier, a 90-case plan producing 21 with saved targets retained, locked unintroduced Paris distribution, Turin nuts only and Kyoto tea only. No page errors. Existing full campaign route test also passed with travel stock arrangements.
 
 Physical iPhone Safari was not available for automated verification. Existing saves are compatible and require no reset. User-supplied private screenshot remains outside this repository and deployment.
+
+## Commissioning deadlock follow-up
+
+A saved plan assigned to a commissioning site previously blocked the trading weeks needed to finish commissioning. Actual production now respects per-site readiness, pause state, staffing and machine hours. Inactive sites produce zero; active sites continue. Overscheduled sites produce feasible whole cases in saved priority order, including recipe changeover hours, while preserving every target and assignment. Production warnings and reports identify the site-specific cause. Actual production cash requirements and contract consequences remain enforced.
+
+Verification: 59/59 tests passed, including four capacity regressions. TypeScript and build passed. A mobile browser fixture matching week 12, $2,874, 83 planned cases and Oakland's 74.5 planned hours advanced through both commissioning weeks to readiness; San Francisco continued, Oakland targets persisted, and the advance button stayed enabled. No page errors or horizontal overflow.

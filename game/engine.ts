@@ -134,17 +134,27 @@ export function allocateProduction(s:State){
  }
  return {products,remaining,shortages:Object.values(products).flatMap(p=>p.shortages)};
 }
-/** Feasible whole batches. The requested plan remains a standing target. */
+/** Feasible whole batches within each site's current hours and shared ingredients. */
 export function actualProduction(s:State){
- const requested=allocateProduction(s),plan={...s.plan};
- if(!requested.shortages.length)return {...requested,plan};
- for(const r of RECIPES){if(!unlocked(s,r)){plan[r.id]=0;continue;}for(const i of INGREDIENTS){const perCase=T.variantIngredients(s,r)[i]||0;if(!perCase)continue;const available=requested.products[r.id].usage.filter(u=>u.ingredient===i).reduce((n,u)=>n+u.qty,0);plan[r.id]=Math.min(plan[r.id],Math.floor((available+1e-8)/perCase));}}
- // A product missing one ingredient releases every other ingredient. Refill the
- // feasible batches in saved priority order without consuming partial cases.
- for(const id of s.productionPriority){const r=RECIPES.find(r=>r.id===id)!;if(!unlocked(s,r))continue;let low=plan[id],high=s.plan[id];while(low<high){const mid=Math.ceil((low+high)/2),probe=allocateProduction({...s,plan:{...plan,[id]:mid}});if(probe.shortages.length)high=mid-1;else low=mid;}plan[id]=low;}
- const allocation=allocateProduction({...s,plan});
- return {...allocation,plan,shortages:requested.shortages};
+ const plan=record(0),usedHours=new Map<G.FactoryId,number>(),batches=new Map<G.FactoryId,number>();
+ // Reserve real machine/staff hours in saved priority order. Inactive sites take
+ // neither hours nor ingredients; commissioning still progresses with the week.
+ for(const id of s.productionPriority){const r=RECIPES.find(r=>r.id===id)!,site=s.growth.assignment[id],f=s.growth.factories.find(f=>f.id===site);if(!f||!unlocked(s,r))continue;const changeover=(batches.get(site)||0)>0&&!s.upgrades.includes('flexibility')?8:0,available=G.factoryCapacity(s,f)-(usedHours.get(site)||0)-changeover,qty=Math.min(s.plan[id],Math.max(0,Math.floor((available+1e-8)/r.hours)));plan[id]=qty;if(qty){usedHours.set(site,(usedHours.get(site)||0)+qty*r.hours+changeover);batches.set(site,(batches.get(site)||0)+1);}}
+ const requested=allocateProduction({...s,plan});
+ if(requested.shortages.length){
+  for(const r of RECIPES)for(const i of INGREDIENTS){const perCase=T.variantIngredients(s,r)[i]||0;if(!perCase)continue;const available=requested.products[r.id].usage.filter(u=>u.ingredient===i).reduce((n,u)=>n+u.qty,0);plan[r.id]=Math.min(plan[r.id],Math.floor((available+1e-8)/perCase));}
+  // Missing ingredients release every other ingredient and any unused machine
+  // time. Refill complete batches without displacing already feasible work.
+  for(const id of s.productionPriority){const r=RECIPES.find(r=>r.id===id)!,f=s.growth.factories.find(f=>f.id===s.growth.assignment[id]);if(!f||!unlocked(s,r))continue;let low=plan[id],high=s.plan[id];while(low<high){const mid=Math.ceil((low+high)/2),probe={...s,plan:{...plan,[id]:mid}};if(G.siteHours(probe,RECIPES,f.id)>G.factoryCapacity(s,f)+1e-8||allocateProduction(probe).shortages.length)high=mid-1;else low=mid;}plan[id]=low;}
+ }
+ const allocation=requested.shortages.length?allocateProduction({...s,plan}):requested,warnings:string[]=[];
+ for(const r of RECIPES){if(plan[r.id]>=s.plan[r.id])continue;const f=s.growth.factories.find(f=>f.id===s.growth.assignment[r.id]),site=G.FACTORIES.find(d=>d.id===f?.id)?.name||'Assigned factory';let cause:string;
+  if(!f)cause='the assigned factory is unavailable';else if(f.ready>s.week)cause=`${site} is commissioning until week ${f.ready}`;else if(f.paused)cause=`${site} is paused`;else if(G.staffHours(s,f)===0)cause=`${site} has no staffed production hours`;else{const more={...s,plan:{...plan,[r.id]:plan[r.id]+1}},atCapacity=G.siteHours(more,RECIPES,f.id)>G.factoryCapacity(s,f)+1e-8;cause=atCapacity?`${site} reached its ${G.staffHours(s,f)<G.machineHours(s,f)?'staffing':'machine'} capacity, including recipe changeovers`:'available ingredients and grade policies allow only complete batches';}
+  warnings.push(`${r.name}: made ${plan[r.id]} of ${s.plan[r.id]} planned cases because ${cause}. Saved target unchanged.`);
+ }
+ return {...allocation,plan,shortages:requested.shortages,warnings};
 }
+export function productionWarnings(s:State){return actualProduction(s).warnings;}
 /** Current-plan shortfall after the shared, grade-aware stock allocation. Incoming freight is not usable yet. */
 export function purchaseShortfall(s:State,ingredient:Ingredient){
  const required=needed(s)[ingredient],allocation=allocateProduction(s);
@@ -184,7 +194,7 @@ export function offers(s:State):Contract[]{
  if(s.travel.learned.includes('paris-brief')&&s.research.includes('turin')&&!s.contracts.some(c=>(c.id==='paris-tasting'||c.id.startsWith('paris-tasting-retry-'))&&c.status!=='failed'))result.push({id:s.contracts.some(c=>c.id==='paris-tasting')?'paris-tasting-retry-'+s.week:'paris-tasting',client:'Claire Moreau · Paris tasting',recipe:'gianduja',qty:25,unitPrice:46,minQuality:80,start:s.week,due:s.week+4,delay:1,deposit:.3,reward:10,accepted:false,status:'offer'});
  return [...result,...J.journeyOffers(s)];
 }
-export function blockers(s:State){const b:string[]=[];for(const f of s.growth.factories){const need=G.siteHours(s,RECIPES,f.id),available=G.factoryCapacity(s,f);if(need>available)b.push(`${G.FACTORIES.find(d=>d.id===f.id)!.name}: plan needs ${need}h, capacity ${available}h (${f.paused?'mothballed':f.ready>s.week?'commissioning':G.staffHours(s,f)<G.machineHours(s,f)?'staffing limit':'machine limit'}).`)}if(hours(s)>capacity(s))b.push(`Plan needs ${hours(s)} hours; only ${capacity(s)} available.`);const actual=actualProduction(s);const wages=RECIPES.reduce((a,r)=>a+actual.plan[r.id]*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0)),0);if(wages>s.cash)b.push(`Production needs ${money(wages)} before sales; cash is ${money(s.cash)}.`);return b}
+export function blockers(s:State){const actual=actualProduction(s),wages=RECIPES.reduce((n,r)=>n+actual.plan[r.id]*productionLabor(s,r),0);return wages>s.cash?[`Production needs ${money(wages)} before sales; cash is ${money(s.cash)}.`]:[]}
 export function forecast(s:State){
  const preview=structuredClone(s),actual=actualProduction(s);let wages=0,contractCash=0;
  for(const r of RECIPES)if(unlocked(s,r)){const qty=actual.plan[r.id];wages+=qty*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0));if(qty)preview.goods.push({recipe:r.id,qty,cost:actual.products[r.id].cost,quality:actual.products[r.id].quality,born:s.week});}
@@ -278,8 +288,8 @@ function applyAction(old:State,a:Action,automatic=false):Result {
  if(a.type==='advance'){
   const b=blockers(s);if(b.length)return fail(b.join(' '));
   const rep:WeekReport={purchases:s.book.purchases,investments:s.book.investments,deposits:s.book.deposits,repayments:s.book.repayments,credit:s.book.credit,story:s.book.story,refunds:0,expectedRetail:forecast(old).sales,contractRevenue:0,costOfSales:0,week:s.week,openingCash:s.book.openingCash,closingCash:0,retail:0,contract:s.book.contractCash,collections:0,labor:0,overhead:overhead(s),spoiled:0,penalties:0,profit:0,produced:0,sold:0,rows:[],notes:[]};let costOfSales=s.book.contractCost;
-  const allocation=actualProduction(s);
-  for(const r of RECIPES){if(!unlocked(s,r))continue;const qty=allocation.plan[r.id],q=allocation.products[r.id].quality,cost=allocation.products[r.id].cost;const labor=qty*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0));rep.labor+=labor;if(qty>0)s.goods.push({recipe:r.id,qty,cost,quality:q,born:s.week});rep.produced+=qty;if(qty<s.plan[r.id])rep.notes.push(`${r.name}: made ${qty} of ${s.plan[r.id]} planned cases because ingredients allowed only complete batches. Saved target unchanged.`);if(s.v3.enabled&&qty>0&&s.growth.assignment[r.id]==='riverside')s.v3.decisions['oakland-produced']='yes';}
+  const allocation=actualProduction(s);rep.notes.push(...allocation.warnings);
+  for(const r of RECIPES){if(!unlocked(s,r))continue;const qty=allocation.plan[r.id],q=allocation.products[r.id].quality,cost=allocation.products[r.id].cost;const labor=qty*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0));rep.labor+=labor;if(qty>0)s.goods.push({recipe:r.id,qty,cost,quality:q,born:s.week});rep.produced+=qty;if(s.v3.enabled&&qty>0&&s.growth.assignment[r.id]==='riverside')s.v3.decisions['oakland-produced']='yes';}
   s.ingredientLots=s.ingredientLots.map(l=>({...l,qty:allocation.remaining.get(l.id)||0})).filter(l=>l.qty>1e-8);syncStock(s);
   let contractRevenue=s.book.contractRevenue;
   for(const c of s.contracts.filter(c=>c.status==='active').sort((a,b)=>b.minQuality-a.minQuality||a.due-b.due)){
@@ -382,7 +392,7 @@ export function marketIntel(s:State){return {available:!!s.v3.analyst,summary:s.
 
 export function standardsAvailable(s:State){return s.research.length>0||s.contracts.some(c=>c.status==='active'&&c.minQuality>=70)||new Set(s.ingredientLots.filter(l=>l.ingredient==='cocoa').map(l=>l.grade)).size>1;}
 
-export function travelPreflight(s:State,to:'sf'|T.Destination){const trip=J.travelPreflight(s,to),requirements=needed(s),short=INGREDIENTS.filter(i=>requirements[i]*trip.weeks>s.stock[i].qty+s.orders.filter(o=>o.ingredient===i&&o.arrival<=s.week+trip.weeks).reduce((n,o)=>n+o.qty,0));return {...trip,warnings:[...trip.warnings,...blockers(s).map(message=>'Current plan needs attention: '+message),...(trip.weeks?[`Scheduled overhead across the trip: ${money(overhead(s)*trip.weeks)}, plus production wages and purchasing. Retail receipts remain uncertain.`]:[]),...(short.length?[`The saved plan may need more ${short.join(', ')} during this trip. Shortages reduce output. Existing standing purchases continue; manual buying uses the markets at your destination.`]:[])]};}
+export function travelPreflight(s:State,to:'sf'|T.Destination){const trip=J.travelPreflight(s,to),requirements=needed(s),short=INGREDIENTS.filter(i=>requirements[i]*trip.weeks>s.stock[i].qty+s.orders.filter(o=>o.ingredient===i&&o.arrival<=s.week+trip.weeks).reduce((n,o)=>n+o.qty,0));return {...trip,warnings:[...trip.warnings,...productionWarnings(s),...blockers(s).map(message=>'Current plan needs attention: '+message),...(trip.weeks?[`Scheduled overhead across the trip: ${money(overhead(s)*trip.weeks)}, plus production wages and purchasing. Retail receipts remain uncertain.`]:[]),...(short.length?[`The saved plan may need more ${short.join(', ')} during this trip. Shortages reduce output. Existing standing purchases continue; manual buying uses the markets at your destination.`]:[])]};}
 
 export function availableFactories(s:State){return G.FACTORIES.filter(d=>s.growth.factories.some(f=>f.id===d.id)||((s.v3.enabled?J.capabilities(s).factories:s.week>=d.week)&&s.reputation>=60&&(d.id!=='northline'||s.travel.visited.includes('turin')&&s.growth.factories.filter(f=>f.ready<=s.week).length>=2)))}
 
