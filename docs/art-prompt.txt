@@ -1,0 +1,9 @@
+Use case: stylized-concept.
+Asset type: original landscape game art, exactly 1536 x 1024 pixels, used as the factory working-surface backdrop of a browser chocolate-business strategy game.
+Primary request: A restrained orthographic/isometric cutaway chocolate workshop in the fictional 1930s coastal port of Maravel.
+Scene/backdrop: A handsome orderly coastal chocolate factory, dark ink-navy masonry walls and chocolate-brown tiled floors, high harbor-facing windows and a dock opening revealing a small glimpse of teal sea. Copper kettles and conching drums, a roasting station, burlap ingredient sacks, and orderly packing benches convey the full production process.
+Style/medium: premium crisp painterly strategy-game illustration with readable architectural geometry, subtle painted texture, refined material shading, beautifully modeled old copper and warm cream highlights. Low elevated isometric/orthographic view with a broad horizontal working floor, clear recognizable silhouettes and restrained detail.
+Composition/framing: Widescreen landscape arrangement within the 1536x1024 image. Keep the main workshop machinery and packing benches in the middle and right of frame. Leave substantial visually calm brown tiled floor space on the left and across the bottom for interface overlays. Compose the essential machinery inside a central horizontal band so the image remains attractive cropped to about 900x400 on desktop and 400x230 on mobile. Architecture fills the image edge to edge; no border.
+Lighting/mood: Premium warm cinematic late-afternoon lighting through tall windows, soft readable shadows and warmly glowing copper, calm industrious atmosphere.
+Color palette: ink navy, warm copper, deep chocolate, warm cream highlights, muted teal harbor water.
+Constraints: Original fictional setting. No text of any kind, no letters, no numbers, no labels, no UI, no interface widgets, no logos, no real brand, no watermark, no people.
