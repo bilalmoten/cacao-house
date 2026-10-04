@@ -5,19 +5,19 @@ import {blockers} from '../../game/engine';
 import type {State} from '../../game/engine';
 export type Place='factory'|'supply'|'orders'|'markets'|'lab'|'finance';
 export const PLACES:Record<Place,{name:string;role:string;person:string;description:string;action:string;tab:string;position:[number,number,number]}>={
- factory:{name:'The Quay Workshop',role:'Master chocolatier',person:'Nadia Vale',description:'Copper drums, a borrowed recipe book, and your name above the door. This is where the house begins.',action:'Plan production',tab:'workshop',position:[-5,4.7,2]},
+ factory:{name:'San Francisco Workshop',role:'Master chocolatier',person:'Nadia Vale',description:'Copper drums, a borrowed recipe book, and your name above the door. This is where the house begins.',action:'Plan production',tab:'workshop',position:[-5,4.7,2]},
  supply:{name:'Rafi’s Dock Exchange',role:'Dock merchant',person:'Rafi Osman',description:'The harbour brings cocoa from the valley and the highlands. Good buying means knowing what can wait.',action:'Trade ingredients',tab:'supply',position:[5.4,3.3,5]},
- orders:{name:'The Merchant Hall',role:'City buyers',person:'Mara Sen',description:'A promise is worth its weight in chocolate. Meet buyers, secure commissions and earn Maravel’s trust.',action:'Meet the buyers',tab:'orders',position:[-6.5,4.2,-5]},
- markets:{name:'Lantern Hill',role:'Hotels & salons',person:'Mara Sen',description:'Above the harbour, taste travels by word of mouth. A second market needs more than a pretty wrapper.',action:'Explore markets',tab:'markets',position:[3.5,6,-5.8]},
- lab:{name:'The Recipe Atelier',role:'Research & investment',person:'Nadia Vale',description:'Peel, praline, origin, ganache. Turn the missing pages of Nadia’s notebook into your next advantage.',action:'Open the notebook',tab:'lab',position:[-.2,3.3,-3]},
- finance:{name:'The Credit Union',role:'The house ledger',person:'Ellis Rowe',description:'Every promise eventually meets the till. Review the accounts, collect balances and repay the workshop note.',action:'Read the accounts',tab:'finance',position:[7.5,3.8,-.7]}
+ orders:{name:'The Buyer Office',role:'City buyers',person:'Mara Sen',description:'A promise is worth its weight in chocolate. Meet buyers, secure commissions and earn San Francisco’s trust.',action:'Meet the buyers',tab:'orders',position:[-6.5,4.2,-5]},
+ markets:{name:'Union Square',role:'Hotels & salons',person:'Mara Sen',description:'Above the harbour, taste travels by word of mouth. A second market needs more than a pretty wrapper.',action:'Explore markets',tab:'markets',position:[3.5,6,-5.8]},
+ lab:{name:'Product Studio',role:'Research & investment',person:'Nadia Vale',description:'Peel, praline, origin, ganache. Turn the missing pages of Nadia’s notebook into your next advantage.',action:'Open the notebook',tab:'lab',position:[-.2,3.3,-3]},
+ finance:{name:'Business Office',role:'The house ledger',person:'Ellis Rowe',description:'Every promise eventually meets the till. Review the accounts, collect balances and repay the workshop note.',action:'Read the accounts',tab:'finance',position:[7.5,3.8,-.7]}
 };
 type Update=(t:number,dt:number)=>void;
 export interface WorldController {setState:(s:State)=>void;setInterior:(v:boolean)=>void;reset:()=>void;zoom:(delta:number)=>void;dispose:()=>void;}
 export function createWorld(host:HTMLElement,onPick:(id:Place)=>void,onProject:(points:Record<string,{x:number;y:number;visible:boolean}>)=>void):WorldController{
  const renderer=new T.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;
- host.appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','Interactive 3D Maravel harbour. Drag to orbit, pinch or use buttons to zoom. Select a named location to visit.');renderer.domElement.setAttribute('role','img');
+ host.appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','Interactive 3D San Francisco harbour. Drag to orbit, pinch or use buttons to zoom. Select a named location to visit.');renderer.domElement.setAttribute('role','img');
  const scene=new T.Scene();scene.background=new T.Color('#8bacaa');scene.fog=new T.Fog('#8bacaa',65,120);
  const camera=new T.OrthographicCamera(-20,20,14,-14,.1,150);camera.position.set(27,29,34);
  const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=.08;controls.enablePan=false;controls.minPolarAngle=.45;controls.maxPolarAngle=1.2;controls.minZoom=.7;controls.maxZoom=2.4;controls.rotateSpeed=.55;controls.update();
@@ -80,7 +80,7 @@ export function createWorld(host:HTMLElement,onPick:(id:Place)=>void,onProject:(
  const hotel=building(town,3.3,-5.5,4.7,3.1,4.4,'#eddab7','#a46a55','markets','LANTERN HOUSE');for(let i=0;i<5;i++){const xx=-1.7+i*.85;box(hotel,xx,2.65,1.75,.6,.06,.6,'#d3bc96');}
  building(town,-.1,-2.6,2.5,2.4,2.2,'#dfc799','#637d70','lab','ATELIER');cyl(town,-.1,3.5,-2.6,.65,.65,.35,'#b59162',16,.35);const dome=mesh(town,new T.SphereGeometry(.65,16,8,0,Math.PI*2,0,Math.PI/2),'#80a9a1',-.1,3.65,-2.6,.3);
  const bank=building(town,9,-.6,3.4,3.2,2.7,'#c5c4ab','#496964','finance','CREDIT UNION');for(const x of [-1.35,1.35])cyl(bank,x,1.5,1.75,.12,.15,2.8,'#e2d6b9',10);
- // Railway station and its platforms define the northern edge of Maravel.
+ // Railway station and its platforms define the northern edge of San Francisco.
  const station=building(town,9,-7.7,4.3,2.1,2,'#c8b58d','#7f6555','markets','NORTHLINE');
  for(const z of [-10,-10.55]){box(town,1,.2,z,23,.07,.06,'#647470',.5);for(let i=0;i<24;i++)box(town,-10+i*.96,.11,-10.3,.15,.09,.94,'#89795c');}
  const train=group(town,-4,.3,-10.25);train.userData.dynamic=true;for(let i=0;i<3;i++){box(train,i*1.5,.5,0,1.4,.65,.6,i===0?'#405c54':'#b47b54');box(train,i*1.5,.88,0,1.45,.1,.72,'#53655c');for(const x of [-.4,.4])for(const z of [-.33,.33]){const w=cyl(train,i*1.5+x,.13,z,.16,.16,.08,'#354944',10);w.rotation.x=Math.PI/2;}if(i)for(let j=0;j<3;j++)box(train,i*1.5-.43+j*.43,.6,.31,.25,.23,.03,'#c5d9c0');}cyl(train,-.38,1,0,.09,.11,.6,'#344f47',10);mergeModel(train);updates.push(t=>{train.position.x=-9+(t*.4)%15});
@@ -99,7 +99,7 @@ export function createWorld(host:HTMLElement,onPick:(id:Place)=>void,onProject:(
  box(inside,0,2.1,-5.9,17,4.2,.25,'#d9c6a1');box(inside,-8.4,2.1,0,.25,4.2,12,'#c9b28b');box(inside,8.4,.42,0,.25,.84,12,'#dbc8a4');box(inside,0,.42,5.9,17,.84,.25,'#dbc8a4');
  for(let i=0;i<4;i++){const x=-6+i*4;box(inside,x,2.6,-5.72,1.9,2.1,.12,'#598b83');box(inside,x,2.6,-5.6,.08,2.25,.08,'#e5d2a8');box(inside,x,2.6,-5.6,2.02,.08,.08,'#e5d2a8');box(inside,x,1.49,-5.54,2.2,.12,.35,'#edddba');}
  for(const z of [-4,0,4])box(inside,-8.2,2.1,z,.28,4.2,.28,'#796349');for(const x of [-8,0,8])box(inside,x,4.1,-5.9,.25,.3,.5,'#796349');
- sign(inside,'CACAO HOUSE · MARAVEL',0,3.8,-5.65,4.6,.55);
+ sign(inside,'CACAO HOUSE · SAN FRANCISCO',0,3.8,-5.65,4.6,.55);
  function machine(x:number,z:number){const g=group(inside,x,0,z);box(g,0,.18,0,2.5,.35,2,'#526b60');cyl(g,0,1.05,0,.98,.86,1.55,'#b87f49',24,.65);cyl(g,0,1.87,0,1.04,1.04,.12,'#dca161',24,.65);cyl(g,0,1.94,0,.86,.86,.08,'#513d2a',24);const paddle=box(g,0,2.08,0,1.65,.1,.14,'#c6ab78',.4);cyl(g,0,2.3,0,.075,.075,.9,'#58675a',12,.5);box(g,0,2.78,0,2.1,.2,.3,'#567363');for(const side of [-1,1])box(g,side*1.05,1.6,0,.14,2.6,.24,'#5d7768');cyl(g,1.18,1.02,.25,.24,.24,.13,'#bb9b5a',16,.5).rotation.z=Math.PI/2;tag(g,'factory');paddle.userData.dynamic=true;updates.push((t)=>{paddle.rotation.y=reduced.matches?0:t*(activity?.55:0)});mergeModel(g,[paddle]);return g;}
  machine(-4.5,-2.7);const second=machine(-1.2,-2.7);second.visible=false;
  const temper=group(inside,3,0,-2.7);box(temper,0,.95,0,2.8,1.8,1.9,'#4e796b');box(temper,0,1.93,0,3,.18,2.1,'#ad9168',.5);for(let i=0;i<3;i++){cyl(temper,-.9+i*.9,2.14,0,.35,.35,.3,'#c69357',16,.6);cyl(temper,-.9+i*.9,2.31,0,.27,.27,.03,'#563d28',16);}tag(temper,'lab');sign(temper,'TEMPERING',0,1.2,1,2.3,.3);
