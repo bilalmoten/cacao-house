@@ -1,14 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import * as E from '../game/engine.ts';
+import * as Engine from '../game/engine.ts';
+// Existing economy scenarios exercise the preserved legacy rules; V3 has separate journey coverage.
+const E={...Engine,newGame:(mode='campaign',seed=42)=>Engine.newGame(mode,seed,'legacy')};
 test('growth migrations, factory timing, automation reserves and buyer recovery',()=>{const console={log:()=>{}};
 
 const legacy=fs.readFileSync('docs/qa/revision/legacy-v2-week17.json','utf8');let s;const outcomes=[];
 function act(a){const r=E.act(s,a);assert.equal(r.ok,true,r.message);s=r.state;return s}
 function check(name,fn){try{fn();outcomes.push({name,passed:true})}catch(e){outcomes.push({name,passed:false,error:e.message})}}
 function restock(){for(const i of E.INGREDIENTS){const q=Math.ceil(E.needed(s)[i]-s.stock[i].qty);if(q>0)act({type:'buy',supplier:'dock',ingredient:i,qty:q})}}
-check('v2 actual migration',()=>{s=E.deserialize(legacy);assert.equal(s.version,5);assert.equal(s.cash,8154.33);assert.equal(s.growth.chapter,'growth');assert.deepEqual(E.deserialize(E.serialize(s)),s)});
+check('v2 actual migration',()=>{s=E.deserialize(legacy);assert.equal(s.version,E.SAVE_VERSION);assert.equal(s.cash,8154.33);assert.equal(s.growth.chapter,'growth');assert.deepEqual(E.deserialize(E.serialize(s)),s)});
 for(const v of [3,4])check(`representative v${v} migration`,()=>{const p=JSON.parse(E.serialize(E.deserialize(legacy)));p.version=v;p.state.version=v;delete p.state.travel;delete p.state.stock.tea;for(const id of ['gianduja','tea']){delete p.state.plan[id];delete p.state.prices[id];delete p.state.position[id];delete p.state.ingredientPolicy[id];delete p.state.growth.assignment[id]}for(const row of Object.values(p.state.ingredientPolicy))delete row.tea;p.state.productionPriority=p.state.productionPriority.filter(x=>!['gianduja','tea'].includes(x));delete p.state.growth.purchasing.tea;if(v===3){delete p.state.growth;delete p.state.marketPrices}const migrated=E.deserialize(JSON.stringify(p));assert.deepEqual(E.deserialize(E.serialize(migrated)),migrated);assert.equal(migrated.plan.tea,0);assert.equal(migrated.stock.tea.qty,0)});
 check('failed acquisition/hiring is atomic',()=>{s=E.deserialize(legacy);s.week=20;s.cash=1;for(const a of [{type:'factory',id:'riverside'},{type:'factory-expand',id:'quay'},{type:'staff',factory:'quay',workers:3,pay:'senior',qualityLead:true}]){const before=E.serialize(s),r=E.act(s,a);assert.equal(r.ok,false);assert.equal(r.state,s);assert.equal(E.serialize(s),before)}});
 check('commissioning costs and staffing timing',()=>{s=E.deserialize(legacy);s.week=18;const base=E.overhead(s);act({type:'factory',id:'riverside'});act({type:'staff',factory:'riverside',workers:2,pay:'standard',qualityLead:true});assert.equal(E.overhead(s),base);assert.equal(E.capacity(s),165);restock();act({type:'advance'});assert.equal(E.overhead(s),base);restock();act({type:'advance'});assert.equal(E.capacity(s),285);assert.equal(E.overhead(s),base+190+100+140);act({type:'factory-pause',id:'riverside'});assert.equal(E.capacity(s),165);assert.equal(E.overhead(s),base+145+56)});

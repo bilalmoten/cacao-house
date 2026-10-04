@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as E from '../game/engine.ts';
+import * as Engine from '../game/engine.ts';
+// Existing economy scenarios exercise the preserved legacy rules; V3 has separate journey coverage.
+const E={...Engine,newGame:(mode='campaign',seed=42)=>Engine.newGame(mode,seed,'legacy')};
 const clone=x=>structuredClone(x);
 const apply=(s,a)=>{const r=E.act(s,a);assert.equal(r.ok,true,r.message);return r.state};
 function fixture(recipe='milk',quality=70,qty=55){return {recipe,quality,qty,born:1,cost:10}}

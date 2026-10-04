@@ -1,0 +1,8 @@
+async (page) => {
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const load=async path=>{await page.getByRole('button',{name:'Menu',exact:true}).click();await page.locator('input[type=file]').setInputFiles(path);await page.waitForTimeout(450)};
+ await load('/tmp/cacao-v3-oakland.json');await page.getByRole('button',{name:'Oakland Factory',exact:true}).click();await page.getByRole('button',{name:'Plan production',exact:true}).click();await page.waitForTimeout(300);const oakland=await page.getByRole('dialog').innerText();await page.screenshot({path:'output/playwright/v3-oakland-factory.png'});await page.getByRole('button',{name:'Close panel'}).click();
+ await load('/tmp/cacao-v3-paris.json');await page.waitForTimeout(700);await page.screenshot({path:'output/playwright/v3-paris-world.png'});await page.getByRole('button',{name:/Claire · the buyer/}).click();const discovery=await page.getByRole('dialog').innerText();await page.getByRole('button',{name:'Close panel'}).click();
+ await load('/tmp/cacao-v3-final.json');const ending=await page.getByRole('dialog').innerText();await page.getByRole('button',{name:'Continue with this house'}).click();await page.waitForTimeout(600);const dismiss=page.getByRole('button',{name:'Dismiss notification'});if(await dismiss.count())await dismiss.click();await page.screenshot({path:'output/playwright/v3-paris-finale.png'});
+ return {oakland,discovery,ending,errors,save:await page.evaluate(()=>{const r=JSON.parse(localStorage.getItem('cacao-house-save-v2'));return {version:r.version,chapter:r.state.v3.chapter,completed:r.state.v3.completed,status:r.state.status}})};
+}

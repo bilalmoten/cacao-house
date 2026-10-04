@@ -1,50 +1,32 @@
-# Cacao House · Beyond the First Bar
+# Cacao House V3
 
-An original, world-led chocolate business strategy game made for Bilal Moten. A sixteen-week opening in San Francisco, an expansion chapter through week 36, and open-ended continuation. React, TypeScript, Vite and Three.js; a separate deterministic simulation; no game backend, payments or account system. Sites supplies the authorized public playable link.
+An original browser strategy game made for Bilal Moten. Explore six 3D destinations, operate fixed-layout chocolate factories and build a house through a connected ten-chapter campaign. React, TypeScript, Vite and Three.js; deterministic simulation; no game backend, accounts, payments or marketing features.
 
 ## Play
 
-Begin with Nadia’s letter, then tap a building or the labelled visit bar. Drag the world to orbit; pinch or use +/− to zoom. Enter the fixed-layout workshop to see the copper machinery. Locations open contextual decision panels while keeping the world visible. Close a week only when your plan is ready. There is no planning timer.
+Meet Nadia, inspect a batch at the workshop and serve the waterfront customer. Follow your contacts to Paris, Turin, Guayaquil, Oakland and Kyoto. Tap buildings, people and machines to open focused decisions. Drag to orbit, pinch or use camera buttons to zoom. Each factory has its own production, stock, equipment, people and standards tabs. Factory settings require an on-site visit until an operations manager is earned and hired.
 
-One output case contains 20 bars. Discover and manage eight products, ingredient quality and supplier lead times, capacity and changeovers, prices and demand, commissions and payment delays, research, factory investment, reputation, rival response and market expansion. The campaign requires all five charter conditions by the close of week sixteen: repay the note, fulfil four contracts, deliver one researched signature recipe, open two markets and reach 65 reputation.
+Products, quality, supplier prices and lead times, manufacturing capacity, product prices, customer orders, payment delays, research, staffing, purchasing rules, repeat buyers, rivals and regional distribution interact. Saved production continues while travelling. Booking shows elapsed trading weeks, costs and warnings. Actual weekly results show what sold; retail forecasts become uncertain ranges only after hiring an analyst.
 
-After the opening charter, build two owned staffed factories and two reliable standing buyers, with positive combined profit across four weeks. An incomplete expansion review is deferred; the business continues. Production, purchasing, staffing and advertising persist. Travel unlocks ingredient relationships, paid eight-case pilots and a Paris delivery chain.
+The story ends at a visible Paris collection gathering after the house has developed its recipes, operated Oakland, fulfilled its promises and settled its loan. Continue into open-ended play with everything retained. There is no real-time planning clock and no forced week-16 deadline in a new V3 story.
 
-The house saves automatically in this browser. Export/import in the House menu transfers a save between devices. Saves are local, not cloud-synchronised. Sound starts off. Reduced-motion preferences stop ambient animation. The city remains playable through location controls if WebGL cannot initialise.
+## Saves and compatibility
 
-## Develop
+Autosaves are local to this browser. Settings exports/imports a JSON save to move between Mac and iPhone. New games use save version 6; versions 2–5 migrate without losing the original house, rules or campaign. Existing houses keep their original campaign semantics. Start a new V3 story from Settings to play the authored journey; the current house exports first. A preserved pre-V3 save can also be exported from Settings. No cloud synchronization is provided.
 
-Requires Node 22.13+.
+## Development
 
-- `npm ci` — install the locked dependency set
-- `npm run dev` — local server, http://127.0.0.1:5173
-- `npm run typecheck` — TypeScript validation
-- `npm test` — 40 deterministic regressions, including 40 complete campaign simulations
-- `npm run build` — static production output in `dist/`
-- `npm start` — preview the production build, http://127.0.0.1:4173
+Node 22.13+ is required. Use `npm ci`, `npm run dev`, `npm run typecheck`, `npm test`, `npm run build` and `npm start`. The static build is `dist/`. The 48 deterministic tests include guarded transactions, stock and capacity, deadlines, delayed payments, bankruptcy/victory, migrations, on-site management, travel, uncertainty and a complete real-action V3 route.
 
-## Structure
+- `game/engine.ts`, `growth.ts`, `travel.ts`, `journey.ts`: simulation and save validation.
+- `src/App.tsx`: world navigation, contextual interface, story, saves and audio.
+- `src/v3/`: focused business panels and numeric controls.
+- `src/world/V3World.tsx`, `scene.ts`: original procedural worlds, picking, camera, animation and state-linked props.
+- `docs/V3-RELEASE.md`: release scope, verification and limitations.
+- `.openai/hosting.json`: existing Site identity; preserve it for updates.
 
-- `game/engine.ts`: guarded, deterministic economy, content and version-5 save validation with v2–v4 migration
-- `game/growth.ts` and `game/travel.ts`: factories, staffing, durable purchasing, repeat buyers, brand/rivals and international product development
-- `src/App.tsx`: business decisions, story letters, menu, autosave and transfer
-- `src/world/scene.ts`: original procedural 3D town/workshop, picking, animation and state-linked props
-- `src/world/WorldView.tsx`: world HUD, locations and character encounters
-- `src/ProductArt.tsx`: dimensional chocolate illustrations and discovery clues
-- `tests/engine.test.mjs`: economy regressions and viable citrus/praline campaign routes
-- `docs/EXPANSION-RELEASE.md`: current scope, gameplay checks and limitations
-- `docs/QA.md`: checked behaviour and honest platform limitations
-- `docs/*art-prompt.txt`: provenance for original generated character/workshop artwork
-- `.openai/hosting.json`: registered Site identity; reuse it for future updates
+## Scope and art
 
-The factory layout is fixed. Upgrades change business capabilities and visible equipment; this is not a tile-placement or conveyor-building game. Three.js displays state, never determines economic outcomes. Static geometry is batched, device pixel ratio is capped, animation is limited to 30 fps and suspended while hidden. Render performance on a physical iPhone is not yet measured.
+This is a strategy game with navigable miniature destinations, not an avatar-based open world or conveyor-placement game. Factory layouts are fixed; upgrades and business state change their visible equipment and activity. People, businesses, story, procedural models and product illustrations are original. Real destinations provide commercial context. No Chocolatier or Coffee Inc assets or code are shipped. Older generated artwork remains in the source history but is not used by the V3 contact interface.
 
-## Economy timing
-
-Wages must be affordable before sales. Eligible stock is reserved for contracts; ready orders dispatch after production and before retail/deadline checks. Due balances collect at the end of their listed week. Sea shipments arrive at the beginning of their listed week. New cooperative orders in weeks six and seven take an extra week; cocoa prices rise during weeks six through nine. Forecast demand has deterministic ±9% variation. Bars expire after their third selling week; ganache after its first.
-
-Reports reconcile the week-opening till with all planning and settlement cash flows. Trading profit includes full dispatched contract revenue and goods cost, separately from deposits, financing, research and capital investment. Deposit refunds are not booked as an expense twice.
-
-## Art and references
-
-Story text, fictional businesses and characters, procedural models, product illustrations and interface assets are original. Real destinations have grounded commercial roles: Turin for gianduja, Guayaquil for Ecuadorian cacao, Paris for buyers and Kyoto/nearby Uji for tea. Chocolatier inspired the travel/character/trade structure; Coffee Inc 2 informed scope and world-first presentation. No reference-game assets or code are shipped. Official Three.js OrbitControls and geometry utilities are used under the package licence. The bundled UI components and development dependencies retain their licences.
+Reduced motion follows the device preference; sound is optional. Rendering caps pixel ratio, batches static geometry and pauses when hidden. Keyboard-accessible place buttons and a WebGL fallback preserve actions. Physical iPhone Safari performance and long-session stability remain for user playtesting.
