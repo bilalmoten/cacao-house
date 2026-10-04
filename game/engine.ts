@@ -1,5 +1,5 @@
 /* Cacao House — deterministic economy. One unit of output is a case of 20 bars. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const INGREDIENTS = ['cocoa','sugar','milk','nuts','citrus'] as const;
 export type Ingredient = typeof INGREDIENTS[number];
 export type RecipeId = 'dark'|'milk'|'orange'|'praline'|'origin'|'truffle';
@@ -18,7 +18,7 @@ export const RECIPES:Recipe[] = [
  {id:'truffle',name:'Midnight Ganache',subtitle:'Small-batch cream truffles',segment:'Connoisseur',color:'#bda5c3',ingredients:{cocoa:.65,sugar:.25,milk:.6},hours:1.8,labor:5.1,price:38,demand:28,unlock:'truffle'}
 ];
 export const RESEARCH = [
- {id:'citrus' as ResearchId,name:'The citrus notebook',cost:550,weeks:1,description:'Nadia’s found a handwritten peel technique. Unlock Amber Peel, a higher-margin gift bar.'},
+ {id:'citrus' as ResearchId,name:'Citrus development',cost:550,weeks:1,description:'Develop Amber Peel, a higher-margin citrus chocolate for gift buyers.'},
  {id:'praline' as ResearchId,name:'Praline pilot',cost:800,weeks:2,description:'Test a nut centre. Unlock Copper Praline; more margin, more machine time.'},
  {id:'origin' as ResearchId,name:'Origin programme',cost:850,weeks:2,description:'Develop Sierra No. 8. Connoisseurs reward cocoa quality; ordinary beans disappoint them.'},
  {id:'truffle' as ResearchId,name:'Ganache laboratory',cost:1000,weeks:2,description:'Unlock Midnight Ganache. Strong hill demand, short shelf life and a slow process.'}
@@ -41,6 +41,13 @@ export const SUPPLIERS = [
 ];
 const BASE:Record<Ingredient,number>={cocoa:7,sugar:2.2,milk:4.5,nuts:7.5,citrus:5};
 export interface Stock {qty:number;cost:number;quality:number}
+export const GRADES = ['standard','select','premium'] as const;
+export type Grade = typeof GRADES[number];
+export interface IngredientLot extends Stock {id:string;ingredient:Ingredient;grade:Grade}
+export interface IngredientPolicy {preferred:Grade|'any';fallback:'any'|'lower'|'none'}
+export interface RepeatOrder {supplier:SupplierId;qty:number}
+export const gradeFor=(quality:number):Grade=>quality>=90?'premium':quality>=75?'select':'standard';
+const defaultPolicies=()=>Object.fromEntries(RECIPES.map(r=>[r.id,Object.fromEntries(INGREDIENTS.map(i=>[i,{preferred:'any',fallback:'any'}]))])) as Record<RecipeId,Record<Ingredient,IngredientPolicy>>;
 export interface Goods extends Stock {born:number;recipe:RecipeId}
 export interface Order {id:string;ingredient:Ingredient;qty:number;cost:number;quality:number;arrival:number;supplier:SupplierId}
 export interface Receivable {id:string;amount:number;due:number;label:string}
@@ -50,6 +57,7 @@ export interface WeekReport {purchases:number;investments:number;deposits:number
 export interface Letter {id:string;week:number;from:string;role:string;title:string;text:string;choices?:{id:string;label:string;detail:string}[]}
 export interface State {
  book:WeekBook;version:number;mode:Mode;seed:number;week:number;cash:number;debt:number;reputation:number;
+ ingredientLots:IngredientLot[];ingredientPolicy:Record<RecipeId,Record<Ingredient,IngredientPolicy>>;productionPriority:RecipeId[];repeatOrders:Partial<Record<Ingredient,RepeatOrder>>;tutorial:{enabled:boolean;completed:string[]};
  stock:Record<Ingredient,Stock>;goods:Goods[];orders:Order[];receivables:Receivable[];
  prices:Record<RecipeId,number>;plan:Record<RecipeId,number>;position:Record<RecipeId,'value'|'balanced'|'premium'>;
  upgrades:UpgradeId[];research:ResearchId[];project:{id:ResearchId;ready:number}|null;markets:MarketId[];
@@ -57,30 +65,56 @@ export interface State {
  choices:Record<string,string>;seen:string[];rival:number;marketing:boolean;creditUsed:boolean;status:'playing'|'won'|'lost';ending:string;serial:number;
 }
 export const LETTERS:Letter[] = [
- {id:'opening',week:1,from:'Nadia Vale',role:'Master chocolatier',title:'The key to the workshop',text:'Bilal, your name is on the lease. Maravel’s last independent chocolate house has sixteen weeks before the $3,000 note falls due. Voss & Co. wants our quay. My mother’s recipe ledger is missing its final pages, but the first two recipes still sell. Make good chocolate, keep cash moving, and give this city a reason to keep us. Start with 55 cases of Quayside and 35 of Velvet. You can change every decision.'},
- {id:'trade',week:3,from:'Rafi Osman',role:'Dock merchant',title:'A letter from the valley',text:'Sierra’s growers remember this workshop. Their cocoa costs less than mine and tastes better, but it travels for two weeks. Order ahead. A cheap shipment arriving after a contract is worthless. There is also a new hotel buyer on the order book.'},
- {id:'choice-growers',week:4,from:'Inés Sol',role:'Cooperative organiser',title:'Whose name goes on the wrapper?',text:'Voss is buying up anonymous cocoa. We can prove where ours comes from. Will you put the growers’ story on your bars, or use that money to compete on price?',choices:[{id:'growers',label:'Back the growers · $300',detail:'+8 reputation and +5 quality for all future batches.'},{id:'quiet',label:'Keep the cash',detail:'No cost. Protect your working capital.'}]},
- {id:'storm',week:5,from:'Rafi Osman',role:'Dock merchant',title:'Weather on the southern route',text:'Storm warnings for weeks six and seven. New Sierra orders placed in those weeks arrive one week later. Deliveries already on the water stay on schedule. Carry a buffer, or buy locally when it matters.'},
- {id:'choice-rival',week:8,from:'Ada Voss',role:'Director, Voss & Co.',title:'An offer with a price',text:'Our railway buyers can use your bars. Sign a one-off private-label deal and we’ll pay today. The wrapper will say Voss. Or make your own name known in Maravel.',choices:[{id:'label',label:'Sell the licence · receive $450',detail:'Immediate cash, but −6 reputation.'},{id:'independent',label:'Stay independent',detail:'+5 reputation. No cash received.'}]},
- {id:'ledger',week:10,from:'Nadia Vale',role:'Master chocolatier',title:'The page hidden in the binding',text:'It was there all along: my mother’s notes on single-origin chocolate. She wrote, “A house is worth more than its walls. It is the people who trust it.” Sierra No. 8 can serve Lantern Hill well. Research it if the numbers work; sentiment does not pay wages.'},
- {id:'choice-festival',week:12,from:'Mara Sen',role:'City festival curator',title:'The Lantern Table',text:'The city is choosing an independent house for the autumn showcase. A tasting table costs $350. It brings reputation and a temporary lift in gift demand. We want your own work, not Voss’s wrapper.',choices:[{id:'showcase',label:'Host the tasting · $350',detail:'+8 reputation, gift demand +25% in weeks 12–14.'},{id:'pass',label:'Focus on the workshop',detail:'Keep $350 for stock and debt repayment.'}]},
- {id:'due',week:15,from:'Ellis Rowe',role:'Harbour credit union',title:'The note comes due',text:'The workshop note must be fully repaid by the close of week sixteen. Cash in your receivables is not cash in the till. Repay from the ledger. The city also wants proof you can serve customers: four completed contracts (including a researched signature recipe), two markets and a reputation of at least 65.'}
+ {id:'opening',week:1,from:'Nadia Vale',role:'Head of product',title:'Your first 16 weeks',text:'Bilal, you have $3,200 cash, two recipes and a $3,000 workshop loan due in week 16. Build an independent chocolate business before Voss takes over. I’ll guide you through production, your first order and restocking. Your opening plan is ready: 55 dark and 35 milk cases.'},
+ {id:'trade',week:3,from:'Rafi Osman',role:'Supplier partner',title:'Better cocoa, longer lead time',text:'Cooperative cocoa offers quality 82 at a lower price, but arrives two weeks after you pay. Order ahead and keep immediate stock for current production. A new hotel order is available this week.'},
+ {id:'choice-growers',week:4,from:'Inés Sol',role:'Sourcing partner',title:'Invest in traceable cocoa?',text:'A $300 sourcing programme adds 8 reputation and 5 quality to future batches. It strengthens your products but reduces cash available for stock. Choose the option that fits your plan.',choices:[{id:'growers',label:'Back the growers · $300',detail:'+8 reputation and +5 quality for all future batches.'},{id:'quiet',label:'Keep the cash',detail:'No cost. Protect your working capital.'}]},
+ {id:'storm',week:5,from:'Rafi Osman',role:'Supplier partner',title:'Delivery disruption: weeks 6–7',text:'New cooperative orders placed in weeks 6–7 take one extra week. Existing shipments keep their arrival dates. Check your stock buffer before committing to a deadline.'},
+ {id:'choice-rival',week:8,from:'Ada Voss',role:'Director, Voss & Co.',title:'Voss offers a private-label deal',text:'Voss will pay $450 now to sell your chocolate under its own brand. You lose 6 reputation. Declining earns 5 reputation and keeps your identity independent.',choices:[{id:'label',label:'Sell the licence · receive $450',detail:'Immediate cash, but −6 reputation.'},{id:'independent',label:'Stay independent',detail:'+5 reputation. No cash received.'}]},
+ {id:'ledger',week:10,from:'Nadia Vale',role:'Head of product',title:'Single-origin product opportunity',text:'Sierra No. 8 targets quality-focused buyers, especially in Lantern Hill. Research costs $850 and takes two weeks. Check your cocoa grades, capacity and cash before starting.'},
+ {id:'choice-festival',week:12,from:'Mara Sen',role:'City festival curator',title:'Festival promotion opportunity',text:'A $350 tasting event adds 8 reputation and increases gift demand by 25% in weeks 12–14. Invest if you can produce the additional cases; otherwise keep the cash.',choices:[{id:'showcase',label:'Host the tasting · $350',detail:'+8 reputation, gift demand +25% in weeks 12–14.'},{id:'pass',label:'Focus on the workshop',detail:'Keep $350 for stock and debt repayment.'}]},
+ {id:'due',week:15,from:'Ellis Rowe',role:'Harbour credit union',title:'Final deadline: end of week 16',text:'Repay the workshop loan from Accounts before week 16 closes. To win, also complete four contracts, including a researched recipe, open two markets and reach 65 reputation. Unpaid customer balances cannot fund a repayment yet.'}
 ];
 const round=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
 const record=<T>(v:T)=>Object.fromEntries(RECIPES.map(r=>[r.id,v])) as Record<RecipeId,T>;
 export const money=(n:number)=>'$'+Math.round(n).toLocaleString('en-US');
 const emptyBook=(openingCash:number):WeekBook=>({openingCash,purchases:0,investments:0,deposits:0,repayments:0,credit:0,story:0,contractCash:0,contractRevenue:0,contractCost:0});
 export function newGame(mode:Mode='campaign',seed=42):State {
- return {book:emptyBook(3200),version:SAVE_VERSION,mode,seed,week:1,cash:3200,debt:3000,reputation:40,stock:{cocoa:{qty:80,cost:7,quality:70},sugar:{qty:45,cost:2.2,quality:70},milk:{qty:25,cost:4.5,quality:70},nuts:{qty:0,cost:7.5,quality:70},citrus:{qty:0,cost:5,quality:70}},goods:[],orders:[],receivables:[],prices:Object.fromEntries(RECIPES.map(r=>[r.id,r.price])) as Record<RecipeId,number>,plan:{...record(0),dark:55,milk:35},position:record('balanced'),upgrades:[],research:[],project:null,markets:['quay'],contracts:[],fulfilled:0,signature:0,revenue:0,reports:[],log:[],choices:{},seen:[],rival:0,marketing:false,creditUsed:false,status:'playing',ending:'',serial:0};
+ const state:State = {ingredientLots:[],ingredientPolicy:defaultPolicies(),productionPriority:RECIPES.map(r=>r.id),repeatOrders:{},tutorial:{enabled:mode==='campaign',completed:[]},book:emptyBook(3200),version:SAVE_VERSION,mode,seed,week:1,cash:3200,debt:3000,reputation:40,stock:{cocoa:{qty:80,cost:7,quality:70},sugar:{qty:45,cost:2.2,quality:70},milk:{qty:25,cost:4.5,quality:70},nuts:{qty:0,cost:7.5,quality:70},citrus:{qty:0,cost:5,quality:70}},goods:[],orders:[],receivables:[],prices:Object.fromEntries(RECIPES.map(r=>[r.id,r.price])) as Record<RecipeId,number>,plan:{...record(0),dark:55,milk:35},position:record('balanced'),upgrades:[],research:[],project:null,markets:['quay'],contracts:[],fulfilled:0,signature:0,revenue:0,reports:[],log:[],choices:{},seen:[],rival:0,marketing:false,creditUsed:false,status:'playing',ending:'',serial:0};
+ state.ingredientLots=INGREDIENTS.filter(i=>state.stock[i].qty>0).map(i=>({id:'opening-'+i,ingredient:i,grade:gradeFor(state.stock[i].quality),...state.stock[i]}));return state;
 }
 export function unlocked(s:State,r:Recipe){return !r.unlock||s.research.includes(r.unlock)}
 export function capacity(s:State){return 100+(s.upgrades.includes('capacity')?65:0)}
 export function overhead(s:State){return 230+(s.upgrades.includes('capacity')?55:0)+MARKETS.filter(m=>s.markets.includes(m.id)).reduce((a,m)=>a+m.overhead,0)+(s.marketing?110:0)}
 export function hours(s:State){const active=RECIPES.filter(r=>unlocked(s,r)&&s.plan[r.id]>0);return round(active.reduce((a,r)=>a+r.hours*s.plan[r.id],0)+(s.upgrades.includes('flexibility')?0:Math.max(0,active.length-1)*8))}
 export function needed(s:State){const req=Object.fromEntries(INGREDIENTS.map(i=>[i,0])) as Record<Ingredient,number>;for(const r of RECIPES)if(unlocked(s,r))for(const i of INGREDIENTS)req[i]+=s.plan[r.id]*(r.ingredients[i]||0);return Object.fromEntries(INGREDIENTS.map(i=>[i,round(req[i])])) as Record<Ingredient,number>}
-export function quality(s:State,r:Recipe){return Math.min(100,Math.round(s.stock.cocoa.quality+(s.upgrades.includes('quality')?12:0)+(s.choices['choice-growers']==='growers'?5:0)+(s.position[r.id]==='premium'?5:s.position[r.id]==='value'?-8:0)))}
-export function unitCost(s:State,r:Recipe){return round(INGREDIENTS.reduce((a,i)=>a+(r.ingredients[i]||0)*s.stock[i].cost,0)+r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0))}
+const productionLabor=(s:State,r:Recipe)=>r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0);
+export function allocateProduction(s:State){
+ const remaining=new Map(s.ingredientLots.map(l=>[l.id,l.qty]));
+ const products=Object.fromEntries(RECIPES.map(r=>[r.id,{usage:[] as {lotId:string;ingredient:Ingredient;qty:number;cost:number;quality:number;fallback:boolean}[],shortages:[] as string[],quality:0,cost:0,fallback:false}])) as Record<RecipeId,{usage:{lotId:string;ingredient:Ingredient;qty:number;cost:number;quality:number;fallback:boolean}[];shortages:string[];quality:number;cost:number;fallback:boolean}>;
+ const left=Object.fromEntries(RECIPES.map(r=>[r.id,Object.fromEntries(INGREDIENTS.map(i=>[i,unlocked(s,r)?s.plan[r.id]*(r.ingredients[i]||0):0]))])) as Record<RecipeId,Record<Ingredient,number>>;
+ // Reserve explicit preferences for every recipe before allowing any fallback or mixed-stock use.
+ for(const pass of [0,1])for(const id of s.productionPriority)for(const i of INGREDIENTS){
+  const policy=s.ingredientPolicy[id][i];if(left[id][i]<1e-8)continue;
+  const eligible=s.ingredientLots.filter(l=>l.ingredient===i&&(remaining.get(l.id)||0)>1e-8&&(pass===0?policy.preferred!=='any'&&l.grade===policy.preferred:policy.preferred==='any'||(l.grade!==policy.preferred&&(policy.fallback==='any'||policy.fallback==='lower'&&GRADES.indexOf(l.grade)<GRADES.indexOf(policy.preferred)))));
+  const total=eligible.reduce((n,l)=>n+(remaining.get(l.id)||0),0),take=Math.min(left[id][i],total);if(!take)continue;
+  // Proportional use within an allowed pool preserves the old blended-stock default.
+  for(const l of eligible){const n=take*(remaining.get(l.id)||0)/total;remaining.set(l.id,Math.max(0,(remaining.get(l.id)||0)-n));products[id].usage.push({lotId:l.id,ingredient:i,qty:n,cost:l.cost,quality:l.quality,fallback:pass===1&&policy.preferred!=='any'});}
+  left[id][i]=Math.max(0,left[id][i]-take);
+ }
+ for(const r of RECIPES){const p=products[r.id],cocoa=p.usage.filter(u=>u.ingredient==='cocoa'),used=cocoa.reduce((a,u)=>a+u.qty,0);const base=used?cocoa.reduce((a,u)=>a+u.qty*u.quality,0)/used:s.stock.cocoa.quality;
+  p.quality=Math.max(0,Math.min(100,Math.round(base+(s.upgrades.includes('quality')?12:0)+(s.choices['choice-growers']==='growers'?5:0)+(s.position[r.id]==='premium'?5:s.position[r.id]==='value'?-8:0))));
+  p.cost=round((s.plan[r.id]>0?(p.usage.reduce((a,u)=>a+u.qty*u.cost,0)+INGREDIENTS.reduce((a,i)=>a+left[r.id][i]*s.stock[i].cost,0))/s.plan[r.id]:INGREDIENTS.reduce((a,i)=>a+(r.ingredients[i]||0)*s.stock[i].cost,0))+productionLabor(s,r));p.fallback=p.usage.some(u=>u.fallback);
+  for(const i of INGREDIENTS)if(left[r.id][i]>.001)p.shortages.push(`${r.name}: ${round(left[r.id][i])} kg ${i} unavailable under its grade policy.`);
+ }
+ return {products,remaining,shortages:Object.values(products).flatMap(p=>p.shortages)};
+}
+export function productPreview(s:State,r:Recipe){if(s.plan[r.id]>0)return allocateProduction(s).products[r.id];const probe={...s,plan:{...s.plan,[r.id]:1}};return allocateProduction(probe).products[r.id]}
+export function quality(s:State,r:Recipe){return productPreview(s,r).quality}
+export function unitCost(s:State,r:Recipe){return productPreview(s,r).cost}
+export function gradeWarnings(s:State){const allocation=allocateProduction(s);return s.contracts.filter(c=>c.status==='active'&&s.plan[c.recipe]>0&&allocation.products[c.recipe].quality<c.minQuality).map(c=>`${RECIPES.find(r=>r.id===c.recipe)!.name}: ${allocation.products[c.recipe].fallback?'fallback ingredients produce':'planned quality is'} ${allocation.products[c.recipe].quality}; ${c.client} requires ${c.minQuality}+. Change grades or product finish before dispatch.`)}
+function syncStock(s:State){for(const i of INGREDIENTS){const lots=s.ingredientLots.filter(l=>l.ingredient===i&&l.qty>1e-8),total=lots.reduce((a,l)=>a+l.qty,0);if(total)s.stock[i]={qty:round(total),cost:round(lots.reduce((a,l)=>a+l.qty*l.cost,0)/total),quality:round(lots.reduce((a,l)=>a+l.qty*l.quality,0)/total)};else s.stock[i].qty=0;}}
 export function quote(s:State,supplier:SupplierId,i:Ingredient){const p=SUPPLIERS.find(x=>x.id===supplier)!;const fluct=1+Math.sin(s.week*.83+INGREDIENTS.indexOf(i))*.08;const cacaoShock=i==='cocoa'&&s.week>=6&&s.week<=9?1.18:1;return round(BASE[i]*p.factor*fluct*cacaoShock)}
+export function orderTotal(s:State,supplier:SupplierId,i:Ingredient,qty:number){return round(quote(s,supplier,i)*qty)}
 export function lead(s:State,id:SupplierId){return SUPPLIERS.find(x=>x.id===id)!.lead+(id==='coop'&&(s.week===6||s.week===7)?1:0)}
 export function demand(s:State,r:Recipe){
  const reach=MARKETS.filter(m=>s.markets.includes(m.id)).reduce((a,m)=>a+m.fit[r.segment as keyof typeof m.fit],0);
@@ -107,7 +141,7 @@ export function offers(s:State):Contract[]{
  if(s.mode==='sandbox'&&s.week>16){const k=Math.floor((s.week-17)/4),r=RECIPES[k%RECIPES.length];const id='sandbox-'+k;if(!s.contracts.some(c=>c.id===id))result.push({id,client:'Maravel Trade Board',recipe:r.id,qty:40+k%4*10,unitPrice:r.price+5,minQuality:60,start:17+k*4,due:20+k*4,delay:1,deposit:.2,reward:5,accepted:false,status:'offer'});}
  return result;
 }
-export function blockers(s:State){const b:string[]=[];if(hours(s)>capacity(s))b.push(`Plan needs ${hours(s)} hours; only ${capacity(s)} available.`);const n=needed(s);for(const i of INGREDIENTS)if(n[i]>s.stock[i].qty+.001)b.push(`${i}: need ${n[i]} kg, have ${round(s.stock[i].qty)} kg.`);const wages=RECIPES.reduce((a,r)=>a+s.plan[r.id]*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0)),0);if(wages>s.cash)b.push(`Production needs ${money(wages)} before sales; cash is ${money(s.cash)}.`);return b}
+export function blockers(s:State){const b:string[]=[...allocateProduction(s).shortages];if(hours(s)>capacity(s))b.push(`Plan needs ${hours(s)} hours; only ${capacity(s)} available.`);const n=needed(s);for(const i of INGREDIENTS)if(n[i]>s.stock[i].qty+.001)b.push(`${i}: need ${n[i]} kg, have ${round(s.stock[i].qty)} kg.`);const wages=RECIPES.reduce((a,r)=>a+s.plan[r.id]*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0)),0);if(wages>s.cash)b.push(`Production needs ${money(wages)} before sales; cash is ${money(s.cash)}.`);return b}
 export function forecast(s:State){
  const preview=structuredClone(s);let wages=0,contractCash=0;
  for(const r of RECIPES)if(unlocked(s,r)){const qty=s.plan[r.id];wages+=qty*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0));if(qty)preview.goods.push({recipe:r.id,qty,cost:unitCost(s,r),quality:quality(s,r),born:s.week});}
@@ -117,17 +151,22 @@ export function forecast(s:State){
  const penalties=preview.contracts.filter(c=>c.status==='active'&&c.due<=s.week).reduce((a,c)=>a+c.qty*c.unitPrice*(c.deposit+.12),0);
  return {sales:round(sales),labor:round(wages),overhead:overhead(s),collections:round(collections),contractCash:round(contractCash),penalties:round(penalties),closing:round(s.cash+sales+collections+contractCash-wages-overhead(s)-penalties),risk:blockers(s)};
 }
-export type Action = {type:'buy';supplier:SupplierId;ingredient:Ingredient;qty:number}|{type:'plan';recipe:RecipeId;qty:number}|{type:'price';recipe:RecipeId;price:number}|{type:'position';recipe:RecipeId;position:'value'|'balanced'|'premium'}|{type:'accept';id:string}|{type:'deliver';id:string}|{type:'upgrade';id:UpgradeId}|{type:'research';id:ResearchId}|{type:'expand';id:MarketId}|{type:'repay';amount:number}|{type:'credit'}|{type:'marketing'}|{type:'choice';id:string;choice:string}|{type:'read';id:string}|{type:'advance'}|{type:'continue'};
+export type Action = {type:'policy';recipe:RecipeId;ingredient:Ingredient;preferred:Grade|'any';fallback:'any'|'lower'|'none'}|{type:'priority';recipe:RecipeId;direction:-1|1}|{type:'repeat';ingredient:Ingredient}|{type:'tutorial';enabled?:boolean;complete?:string}| {type:'buy';supplier:SupplierId;ingredient:Ingredient;qty:number}|{type:'plan';recipe:RecipeId;qty:number}|{type:'price';recipe:RecipeId;price:number}|{type:'position';recipe:RecipeId;position:'value'|'balanced'|'premium'}|{type:'accept';id:string}|{type:'deliver';id:string}|{type:'upgrade';id:UpgradeId}|{type:'research';id:ResearchId}|{type:'expand';id:MarketId}|{type:'repay';amount:number}|{type:'credit'}|{type:'marketing'}|{type:'choice';id:string;choice:string}|{type:'read';id:string}|{type:'advance'}|{type:'continue'};
 export interface Result {state:State;ok:boolean;message:string}
 export function act(old:State,a:Action):Result {
  const fail=(message:string):Result=>({state:old,ok:false,message});
  if(old.status!=='playing'&&a.type!=='continue'&&a.type!=='read')return fail('This chapter has ended. Restart, or continue a successful house in sandbox.');
+ if(a.type==='repeat'){const preset=old.repeatOrders[a.ingredient];return preset?act(old,{type:'buy',ingredient:a.ingredient,...preset}):fail('Place an order first to save a repeat preset.');}
  const s=structuredClone(old);const note=(text:string)=>s.log.unshift({week:s.week,text});
  const spend=(n:number)=>Number.isFinite(n)&&n>=0&&s.cash>=n;
+ if(a.type==='tutorial'){if(typeof a.enabled==='boolean')s.tutorial.enabled=a.enabled;if(a.complete&&['production','order','result1','supply','result2'].includes(a.complete)&&!s.tutorial.completed.includes(a.complete))s.tutorial.completed.push(a.complete);return {state:s,ok:true,message:'Guide updated.'};}
+ if(a.type==='policy'){if(!RECIPES.some(r=>r.id===a.recipe&&r.ingredients[a.ingredient])||!['any',...GRADES].includes(a.preferred)||!['any','lower','none'].includes(a.fallback))return fail('Choose a valid ingredient grade policy.');s.ingredientPolicy[a.recipe][a.ingredient]={preferred:a.preferred,fallback:a.fallback};return {state:s,ok:true,message:'Ingredient preference saved.'};}
+ if(a.type==='priority'){const index=s.productionPriority.indexOf(a.recipe),target=index+a.direction;if(![-1,1].includes(a.direction)||index<0||target<0||target>=s.productionPriority.length)return fail('This product cannot move further.');[s.productionPriority[index],s.productionPriority[target]]=[s.productionPriority[target],s.productionPriority[index]];return {state:s,ok:true,message:'Allocation priority saved.'};}
  if(a.type==='buy'){
   if(!SUPPLIERS.some(x=>x.id===a.supplier)||!INGREDIENTS.includes(a.ingredient)||!Number.isFinite(a.qty)||a.qty<1||a.qty>500||a.qty%1!==0)return fail('Order between 1 and 500 whole kilograms.');
-  const price=quote(s,a.supplier,a.ingredient),cost=round(price*a.qty);if(!spend(cost))return fail('Not enough cash for this order.');s.cash=round(s.cash-cost);s.book.purchases=round(s.book.purchases+cost);const supplier=SUPPLIERS.find(x=>x.id===a.supplier)!;const q=a.ingredient==='cocoa'?supplier.quality:75;
-  if(lead(s,a.supplier)===0)addStock(s,a.ingredient,a.qty,price,q);else s.orders.push({id:'order-'+(++s.serial),supplier:a.supplier,ingredient:a.ingredient,qty:a.qty,cost:price,quality:q,arrival:s.week+lead(s,a.supplier)});
+  const price=quote(s,a.supplier,a.ingredient),cost=orderTotal(s,a.supplier,a.ingredient,a.qty);if(!spend(cost))return fail('Not enough cash for this order.');s.cash=round(s.cash-cost);s.book.purchases=round(s.book.purchases+cost);const supplier=SUPPLIERS.find(x=>x.id===a.supplier)!;const q=a.ingredient==='cocoa'?supplier.quality:75;
+  if(lead(s,a.supplier)===0)addStock(s,a.ingredient,a.qty,price,q);else s.orders.push({id:nextId(s,'order'),supplier:a.supplier,ingredient:a.ingredient,qty:a.qty,cost:price,quality:q,arrival:s.week+lead(s,a.supplier)});
+  s.repeatOrders[a.ingredient]={supplier:a.supplier,qty:a.qty};if(s.week===2&&a.supplier==='coop'&&!s.tutorial.completed.includes('supply'))s.tutorial.completed.push('supply');
   note(`${a.qty} kg ${a.ingredient} ordered from ${supplier.name} for ${money(cost)}.`);
   return {state:s,ok:true,message:lead(s,a.supplier)?`Ordered. Arrives at the start of week ${s.week+lead(s,a.supplier)}.`:'Delivered to your storeroom.'};
  }
@@ -164,10 +203,10 @@ export function act(old:State,a:Action):Result {
  }
  if(a.type==='marketing'){s.marketing=!s.marketing;return {state:s,ok:true,message:s.marketing?'Local advertising enabled: $110 / week, +18% demand.':'Advertising paused.'};}
  if(a.type==='read'){
-  const l=LETTERS.find(x=>x.id===a.id);if(!l||l.week>s.week)return fail('This letter is not available yet.');if(l.choices&&!s.choices[l.id])return fail('Choose a response before filing this letter.');if(!s.seen.includes(a.id))s.seen.push(a.id);return {state:s,ok:true,message:'Letter filed.'};
+  const l=LETTERS.find(x=>x.id===a.id);if(!l||l.week>s.week)return fail('This letter is not available yet.');if(l.choices&&!s.choices[l.id])return fail('Choose a response before acknowledging this message.');if(!s.seen.includes(a.id))s.seen.push(a.id);return {state:s,ok:true,message:'Message acknowledged. It remains in Messages.'};
  }
  if(a.type==='choice'){
-  const l=LETTERS.find(x=>x.id===a.id);if(!l||l.week>s.week||!l.choices?.some(c=>c.id===a.choice)||s.choices[a.id])return fail('This decision is unavailable or already made.');const cost=a.choice==='growers'?300:a.choice==='showcase'?350:0;if(!spend(cost))return fail('Not enough cash for this choice.');s.cash-=cost;s.book.story-=cost;s.choices[a.id]=a.choice;if(a.choice==='growers')s.reputation+=8;if(a.choice==='label'){s.cash+=450;s.book.story+=450;s.reputation-=6;}if(a.choice==='independent')s.reputation+=5;if(a.choice==='showcase')s.reputation+=8;s.reputation=Math.max(0,Math.min(100,s.reputation));s.seen.push(a.id);note(`${l.title}: ${l.choices.find(c=>c.id===a.choice)!.label}.`);return {state:s,ok:true,message:'Your decision is recorded in the Maravel ledger.'};
+  const l=LETTERS.find(x=>x.id===a.id);if(!l||l.week>s.week||!l.choices?.some(c=>c.id===a.choice)||s.choices[a.id])return fail('This decision is unavailable or already made.');const cost=a.choice==='growers'?300:a.choice==='showcase'?350:0;if(!spend(cost))return fail('Not enough cash for this choice.');s.cash-=cost;s.book.story-=cost;s.choices[a.id]=a.choice;if(a.choice==='growers')s.reputation+=8;if(a.choice==='label'){s.cash+=450;s.book.story+=450;s.reputation-=6;}if(a.choice==='independent')s.reputation+=5;if(a.choice==='showcase')s.reputation+=8;s.reputation=Math.max(0,Math.min(100,s.reputation));s.seen.push(a.id);note(`${l.title}: ${l.choices.find(c=>c.id===a.choice)!.label}.`);return {state:s,ok:true,message:'Decision saved. You can review it in Messages.'};
  }
  if(a.type==='continue'){
   if(s.status!=='won')return fail('Complete the campaign to continue this house.');s.mode='sandbox';s.status='playing';s.ending='';return {state:s,ok:true,message:'The house continues. New Trade Board orders appear every four weeks.'};
@@ -175,7 +214,9 @@ export function act(old:State,a:Action):Result {
  if(a.type==='advance'){
   const b=blockers(s);if(b.length)return fail(b.join(' '));
   const rep:WeekReport={purchases:s.book.purchases,investments:s.book.investments,deposits:s.book.deposits,repayments:s.book.repayments,credit:s.book.credit,story:s.book.story,refunds:0,expectedRetail:forecast(old).sales,contractRevenue:0,costOfSales:0,week:s.week,openingCash:s.book.openingCash,closingCash:0,retail:0,contract:s.book.contractCash,collections:0,labor:0,overhead:overhead(s),spoiled:0,penalties:0,profit:0,produced:0,sold:0,rows:[],notes:[]};let costOfSales=s.book.contractCost;
-  for(const r of RECIPES){if(!unlocked(s,r))continue;const qty=s.plan[r.id],q=quality(s,r),cost=unitCost(s,r);for(const i of INGREDIENTS)s.stock[i].qty=round(s.stock[i].qty-qty*(r.ingredients[i]||0));const labor=qty*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0));rep.labor+=labor;if(qty>0)s.goods.push({recipe:r.id,qty,cost,quality:q,born:s.week});rep.produced+=qty;}
+  const allocation=allocateProduction(s);
+  for(const r of RECIPES){if(!unlocked(s,r))continue;const qty=s.plan[r.id],q=allocation.products[r.id].quality,cost=allocation.products[r.id].cost;const labor=qty*(r.labor*(s.upgrades.includes('efficiency')?.75:1)+(s.position[r.id]==='premium'?1.3:s.position[r.id]==='value'?-.7:0));rep.labor+=labor;if(qty>0)s.goods.push({recipe:r.id,qty,cost,quality:q,born:s.week});rep.produced+=qty;}
+  s.ingredientLots=s.ingredientLots.map(l=>({...l,qty:allocation.remaining.get(l.id)||0})).filter(l=>l.qty>1e-8);syncStock(s);
   let contractRevenue=s.book.contractRevenue;
   for(const c of s.contracts.filter(c=>c.status==='active').sort((a,b)=>b.minQuality-a.minQuality||a.due-b.due)){
    if(s.goods.filter(g=>g.recipe===c.recipe&&g.quality>=c.minQuality).reduce((a,g)=>a+g.qty,0)<c.qty)continue;
@@ -196,14 +237,15 @@ export function act(old:State,a:Action):Result {
   s.reports.unshift(rep);s.reports=s.reports.slice(0,52);s.week++;
   for(const o of s.orders.filter(o=>o.arrival<=s.week)){addStock(s,o.ingredient,o.qty,o.cost,o.quality);rep.notes.push(`${o.qty} kg ${o.ingredient} arrived from ${SUPPLIERS.find(p=>p.id===o.supplier)!.name}.`);}s.orders=s.orders.filter(o=>o.arrival>s.week);
   if(s.project&&s.project.ready<=s.week){s.research.push(s.project.id);rep.notes.push(`${RESEARCH.find(r=>r.id===s.project!.id)!.name} completed.`);s.project=null;}
-  if(s.cash<0){s.status='lost';s.ending='The till could not cover wages, overhead or a missed-order penalty. Maravel’s credit union closes the workshop. A better plan can turn the same opening around.';}
-  else if(s.mode==='campaign'&&s.week>16){if(s.debt===0&&s.fulfilled>=4&&s.signature>=1&&s.markets.length>=2&&s.reputation>=65){s.status='won';s.ending='The quay stays independent. The note is paid, your customers trust you, and Nadia’s ledger has a new author. Voss withdraws its bid. Maravel’s next chapter belongs to your house.';}else{s.status='lost';s.ending=`The city’s review arrives. ${s.debt>0?`${money(s.debt)} remains on the note. `:''}${s.fulfilled<4?'Four completed contracts were required. ':''}${s.signature<1?'A researched signature contract was required. ':''}${s.markets.length<2?'A second market was required. ':''}${s.reputation<65?'Reputation needed to reach 65. ':''}Voss takes the lease. Try a different path through the same sixteen weeks.`;}}
+  if(s.cash<0){s.status='lost';s.ending='Cash ran out after wages, overhead or a missed-order penalty. The lender closes the workshop. Review the final cash breakdown and try a different production and funding plan.';}
+  else if(s.mode==='campaign'&&s.week>16){if(s.debt===0&&s.fulfilled>=4&&s.signature>=1&&s.markets.length>=2&&s.reputation>=65){s.status='won';s.ending='You repaid the loan, completed the required orders and built a trusted business across two markets. Voss withdraws its takeover bid. Continue in sandbox to grow at your own pace.';}else{s.status='lost';s.ending=`The city’s review arrives. ${s.debt>0?`${money(s.debt)} remains on the note. `:''}${s.fulfilled<4?'Four completed contracts were required. ':''}${s.signature<1?'A researched signature contract was required. ':''}${s.markets.length<2?'A second market was required. ':''}${s.reputation<65?'Reputation needed to reach 65. ':''}Voss takes the lease. Try a different path through the same sixteen weeks.`;}}
   note(`Week ${rep.week}: ${money(rep.retail)} retail sales, ${money(rep.profit)} trading profit.`);
   s.log=s.log.slice(0,120);return {state:s,ok:true,message:`Week ${rep.week} closed. ${money(rep.retail)} retail sales; ${money(s.cash)} cash.`};
  }
  return fail('Unknown action.');
 }
-function addStock(s:State,i:Ingredient,qty:number,cost:number,q:number){const v=s.stock[i],total=v.qty+qty;v.cost=round((v.qty*v.cost+qty*cost)/total);v.quality=round((v.qty*v.quality+qty*q)/total);v.qty=round(total)}
+function nextId(s:State,prefix:string){let id:string;do{id=prefix+'-'+(++s.serial)}while(s.ingredientLots.some(l=>l.id===id)||s.orders.some(o=>o.id===id));return id}
+function addStock(s:State,i:Ingredient,qty:number,cost:number,q:number){s.ingredientLots.push({id:nextId(s,'lot'),ingredient:i,grade:gradeFor(q),qty,cost,quality:q});syncStock(s)}
 function consumeGoods(s:State,id:RecipeId,qty:number,minQuality=0){let left=qty,cost=0;for(const g of s.goods.filter(g=>g.recipe===id&&g.quality>=minQuality).sort((a,b)=>a.quality-b.quality||a.born-b.born)){const n=Math.min(left,g.qty);g.qty-=n;cost+=n*g.cost;left-=n;if(left<=0)break;}s.goods=s.goods.filter(g=>g.qty>0);return {cost:round(cost),qty:qty-left}}
 function sellRetail(s:State,id:RecipeId,qty:number){
  const lots=s.goods.filter(g=>g.recipe===id).sort((a,b)=>a.born-b.born);const reserved=new Map<Goods,number>();
@@ -214,7 +256,7 @@ function random(seed:number,week:number,salt:number){let x=(seed+week*374761393+
 export function serialize(s:State){return JSON.stringify({version:SAVE_VERSION,state:s})}
 export function deserialize(raw:string):State{
  let p:any;try{p=JSON.parse(raw)}catch{throw new Error('This save is not valid JSON. Your current house is unchanged.')}
- if(p?.version!==SAVE_VERSION||p.state?.version!==SAVE_VERSION)throw new Error('This save version is not supported. Your current house is unchanged.');
+ if(![2,SAVE_VERSION].includes(p?.version)||p.state?.version!==p.version)throw new Error('This save version is not supported. Your current house is unchanged.');
  const s=p.state as State;const finite=(x:unknown)=>typeof x==='number'&&Number.isFinite(x);
  if(!s||!['campaign','sandbox'].includes(s.mode)||!['playing','won','lost'].includes(s.status)||!Number.isInteger(s.week)||s.week<1||s.week>10000||!finite(s.cash)||!finite(s.debt)||s.debt<0||!finite(s.reputation)||s.reputation<0||s.reputation>100||!finite(s.seed)||!Number.isInteger(s.serial)||(!Number.isInteger(s.fulfilled)||s.fulfilled<0)||(!Number.isInteger(s.signature)||s.signature<0)||!finite(s.revenue)||!finite(s.rival)||s.rival<0||s.rival>3||typeof s.marketing!=='boolean'||typeof s.creditUsed!=='boolean'||typeof s.ending!=='string')throw new Error('Save data is damaged. Your current house is unchanged.');
  for(const key of ['goods','orders','receivables','upgrades','research','markets','contracts','reports','log','seen'] as const)if(!Array.isArray(s[key])||s[key].length>1000)throw new Error('Save collections are damaged.');
@@ -234,5 +276,12 @@ export function deserialize(raw:string):State{
  for(const x of s.log)if(!Number.isInteger(x.week)||typeof x.text!=='string')throw new Error('Ledger is damaged.');
  for(const x of s.reports)if(!Number.isInteger(x.week)||!finite(x.retail)||!finite(x.profit)||['openingCash','closingCash','contract','collections','labor','overhead','spoiled','penalties','produced','sold','purchases','investments','deposits','repayments','credit','story','refunds','expectedRetail','contractRevenue','costOfSales'].some(k=>!finite((x as any)[k]))||x.week>=s.week||!Array.isArray(x.rows)||!Array.isArray(x.notes)||x.notes.some(n=>typeof n!=='string')||x.rows.some(r=>!r||typeof r!=='object'||!RECIPES.some(a=>a.id===r.recipe)||!finite(r.made)||!finite(r.sold)||!finite(r.demand)||!finite(r.quality)||!finite(r.revenue)))throw new Error('Week reports are damaged.');
  if(s.seen.some(id=>typeof id!=='string')||Object.entries(s.choices).some(([id,choice])=>!LETTERS.find(l=>l.id===id)?.choices?.some(c=>c.id===choice)))throw new Error('Story data is damaged.');
+ if(p.version===2){s.version=SAVE_VERSION;s.ingredientLots=INGREDIENTS.filter(i=>s.stock[i].qty>0).map(i=>({id:'legacy-'+i,ingredient:i,grade:gradeFor(s.stock[i].quality),...s.stock[i]}));s.ingredientPolicy=defaultPolicies();s.productionPriority=RECIPES.map(r=>r.id);s.repeatOrders={};s.tutorial={enabled:s.week<=2,completed:[]};}
+ if(!Array.isArray(s.ingredientLots)||s.ingredientLots.length>5000||s.ingredientLots.some(l=>!l||typeof l.id!=='string'||!INGREDIENTS.includes(l.ingredient)||!GRADES.includes(l.grade)||!finite(l.qty)||l.qty<=0||!finite(l.cost)||l.cost<0||!finite(l.quality)||l.quality<0||l.quality>100||gradeFor(l.quality)!==l.grade)||new Set(s.ingredientLots.map(l=>l.id)).size!==s.ingredientLots.length)throw new Error('Ingredient lots are damaged.');
+ for(const i of INGREDIENTS){const lots=s.ingredientLots.filter(l=>l.ingredient===i),n=lots.reduce((a,l)=>a+l.qty,0);if(Math.abs(n-s.stock[i].qty)>.011||(n>0&&(Math.abs(lots.reduce((a,l)=>a+l.qty*l.cost,0)/n-s.stock[i].cost)>.011||Math.abs(lots.reduce((a,l)=>a+l.qty*l.quality,0)/n-s.stock[i].quality)>.011)))throw new Error('Ingredient totals do not match their lots.');}
+ if(!Array.isArray(s.productionPriority)||s.productionPriority.length!==RECIPES.length||new Set(s.productionPriority).size!==RECIPES.length||s.productionPriority.some(id=>!RECIPES.some(r=>r.id===id)))throw new Error('Production priority is damaged.');
+ for(const r of RECIPES)for(const i of INGREDIENTS){const p=s.ingredientPolicy?.[r.id]?.[i];if(!p||!['any',...GRADES].includes(p.preferred)||!['any','lower','none'].includes(p.fallback))throw new Error('Ingredient preferences are damaged.');}
+ if(!s.repeatOrders||typeof s.repeatOrders!=='object'||Array.isArray(s.repeatOrders)||Object.entries(s.repeatOrders).some(([i,p])=>!INGREDIENTS.includes(i as Ingredient)||!p||!SUPPLIERS.some(x=>x.id===p.supplier)||!Number.isInteger(p.qty)||p.qty<1||p.qty>500))throw new Error('Repeat orders are damaged.');
+ if(!s.tutorial||typeof s.tutorial.enabled!=='boolean'||!Array.isArray(s.tutorial.completed)||s.tutorial.completed.some(id=>!['production','order','result1','supply','result2'].includes(id)))throw new Error('Tutorial progress is damaged.');
  return s;
 }

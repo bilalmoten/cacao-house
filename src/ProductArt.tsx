@@ -1,6 +1,6 @@
 import {useId} from 'react';
 import type {RecipeId} from '../game/engine';
-export const DISCOVERY:Record<RecipeId,string>={dark:'Nadia’s first rule: a slow roast, a clean snap.',milk:'A copper wrapper hides the house’s softest centre.',orange:'A note in the margin: candy the peel twice.',praline:'Roast the hazelnut until the room smells like autumn.',origin:'One valley. One harvest. Let the cocoa speak.',truffle:'The last page calls for cream, patience, and a short journey.'};
+export const DISCOVERY:Record<RecipeId,string>={dark:'A bold everyday dark bar with a clean finish.',milk:'Smooth milk chocolate for everyday buyers.',orange:'Dark chocolate and candied citrus, designed for gifting.',praline:'Roasted hazelnut filling with a premium gift appeal.',origin:'Single-origin cocoa for quality-focused customers.',truffle:'Rich cream truffles. Produce and sell in the same week.'};
 export default function ProductArt({recipe,small=false,locked=false}:{recipe:RecipeId;small?:boolean;locked?:boolean}){
  const uid=useId().replaceAll(':',''),milk=recipe==='milk',orange=recipe==='orange',origin=recipe==='origin',praline=recipe==='praline',truffle=recipe==='truffle';
  const top=milk?'#986d48':orange?'#805038':origin?'#553d30':'#6d4732',side=milk?'#654630':'#3d2b24';

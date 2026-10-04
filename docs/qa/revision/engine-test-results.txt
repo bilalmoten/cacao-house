@@ -1,0 +1,218 @@
+
+> cacao-house-maravel@1.0.0 test
+> node --experimental-strip-types --test tests/engine.test.mjs
+
+TAP version 13
+# Subtest: overspending, invalid amounts, locked recipe and insufficient stock are atomic
+ok 1 - overspending, invalid amounts, locked recipe and insufficient stock are atomic
+  ---
+  duration_ms: 2.751542
+  type: 'test'
+  ...
+# Subtest: capacity and wages block week close without consuming inventory
+ok 2 - capacity and wages block week close without consuming inventory
+  ---
+  duration_ms: 12.977666
+  type: 'test'
+  ...
+# Subtest: opening production conserves ingredients and reconciles cash
+ok 3 - opening production conserves ingredients and reconciles cash
+  ---
+  duration_ms: 1.545
+  type: 'test'
+  ...
+# Subtest: due-week production dispatches before the deadline penalty
+ok 4 - due-week production dispatches before the deadline penalty
+  ---
+  duration_ms: 1.054833
+  type: 'test'
+  ...
+# Subtest: retail cannot consume qualifying stock reserved for an incomplete commission
+ok 5 - retail cannot consume qualifying stock reserved for an incomplete commission
+  ---
+  duration_ms: 0.973375
+  type: 'test'
+  ...
+# Subtest: eligible contract auto-ship and deposit plus balance equal face value
+ok 6 - eligible contract auto-ship and deposit plus balance equal face value
+  ---
+  duration_ms: 1.518625
+  type: 'test'
+  ...
+# Subtest: delayed balances are collected once in their listed closing week
+ok 7 - delayed balances are collected once in their listed closing week
+  ---
+  duration_ms: 2.949584
+  type: 'test'
+  ...
+# Subtest: missing deadline returns deposit, applies penalty and reputation loss once
+ok 8 - missing deadline returns deposit, applies penalty and reputation loss once
+  ---
+  duration_ms: 0.909709
+  type: 'test'
+  ...
+# Subtest: shipments blend price/quality and the signalled storm shifts new orders
+ok 9 - shipments blend price/quality and the signalled storm shifts new orders
+  ---
+  duration_ms: 1.762959
+  type: 'test'
+  ...
+# Subtest: research, upgrades, choices and emergency finance cannot be claimed twice
+ok 10 - research, upgrades, choices and emergency finance cannot be claimed twice
+  ---
+  duration_ms: 1.0315
+  type: 'test'
+  ...
+# Subtest: bankruptcy takes precedence over a campaign review
+ok 11 - bankruptcy takes precedence over a campaign review
+  ---
+  duration_ms: 0.436708
+  type: 'test'
+  ...
+# Subtest: campaign victory requires all charter conditions and continues to sandbox
+ok 12 - campaign victory requires all charter conditions and continues to sandbox
+  ---
+  duration_ms: 1.999875
+  type: 'test'
+  ...
+# Subtest: versioned saves round-trip and reject damaged chronology, duplicates and numbers
+ok 13 - versioned saves round-trip and reject damaged chronology, duplicates and numbers
+  ---
+  duration_ms: 2.45225
+  type: 'test'
+  ...
+# Subtest: same state/action inputs are deterministic and source state is unmodified
+ok 14 - same state/action inputs are deterministic and source state is unmodified
+  ---
+  duration_ms: 1.232417
+  type: 'test'
+  ...
+# Subtest: forecast accounts for auto-dispatch and penalties
+ok 15 - forecast accounts for auto-dispatch and penalties
+  ---
+  duration_ms: 0.903459
+  type: 'test'
+  ...
+# Subtest: complete citrus and praline campaign routes win across 20 demand seeds
+ok 16 - complete citrus and praline campaign routes win across 20 demand seeds
+  ---
+  duration_ms: 579.544917
+  type: 'test'
+  ...
+# Subtest: manual and automatic dispatch recognize identical contract income and cost once
+ok 17 - manual and automatic dispatch recognize identical contract income and cost once
+  ---
+  duration_ms: 0.760459
+  type: 'test'
+  ...
+# Subtest: week-opening cash reconciles every planning action and settlement flow
+ok 18 - week-opening cash reconciles every planning action and settlement flow
+  ---
+  duration_ms: 0.765834
+  type: 'test'
+  ...
+# Subtest: bars expire after exactly three selling weeks; ganache after one
+ok 19 - bars expire after exactly three selling weeks; ganache after one
+  ---
+  duration_ms: 1.494667
+  type: 'test'
+  ...
+# Subtest: lower-grade dispatch preserves scarce premium stock for a stricter contract
+ok 20 - lower-grade dispatch preserves scarce premium stock for a stricter contract
+  ---
+  duration_ms: 0.584041
+  type: 'test'
+  ...
+# Subtest: malformed collections receive intentional save errors rather than runtime TypeErrors
+ok 21 - malformed collections receive intentional save errors rather than runtime TypeErrors
+  ---
+  duration_ms: 0.855625
+  type: 'test'
+  ...
+# Subtest: preferred premium ingredients are reserved before earlier products use fallback or blends
+ok 22 - preferred premium ingredients are reserved before earlier products use fallback or blends
+  ---
+  duration_ms: 0.940292
+  type: 'test'
+  ...
+# Subtest: strict grade shortage blocks atomically and allowed fallback changes realized quality
+ok 23 - strict grade shortage blocks atomically and allowed fallback changes realized quality
+  ---
+  duration_ms: 1.294125
+  type: 'test'
+  ...
+# Subtest: competing explicit grade reservations respect saved production priority
+ok 24 - competing explicit grade reservations respect saved production priority
+  ---
+  duration_ms: 0.493416
+  type: 'test'
+  ...
+# Subtest: fractional allocation conserves ingredient quantity and acquisition value
+ok 25 - fractional allocation conserves ingredient quantity and acquisition value
+  ---
+  duration_ms: 1.171584
+  type: 'test'
+  ...
+# Subtest: contract warning identifies quality failure from permitted fallback
+ok 26 - contract warning identifies quality failure from permitted fallback
+  ---
+  duration_ms: 0.911167
+  type: 'test'
+  ...
+# Subtest: repeat purchases preserve per-ingredient supplier and quantity; failed repeat is atomic
+ok 27 - repeat purchases preserve per-ingredient supplier and quantity; failed repeat is atomic
+  ---
+  duration_ms: 0.466333
+  type: 'test'
+  ...
+# Subtest: delayed premium orders preserve grade and arrive without raw-material expiry
+ok 28 - delayed premium orders preserve grade and arrive without raw-material expiry
+  ---
+  duration_ms: 0.956166
+  type: 'test'
+  ...
+# Subtest: v2 migration preserves assets and historic outcomes without inventing source grades
+ok 29 - v2 migration preserves assets and historic outcomes without inventing source grades
+  ---
+  duration_ms: 0.392292
+  type: 'test'
+  ...
+# Subtest: damaged lots, preferences, priority and repeat presets reject without repairing v3
+ok 30 - damaged lots, preferences, priority and repeat presets reject without repairing v3
+  ---
+  duration_ms: 0.59375
+  type: 'test'
+  ...
+# Subtest: position demand follows segment preference and never reads acquisition cost
+ok 31 - position demand follows segment preference and never reads acquisition cost
+  ---
+  duration_ms: 1.016208
+  type: 'test'
+  ...
+# Subtest: guide progress survives saves and never restricts real game actions
+ok 32 - guide progress survives saves and never restricts real game actions
+  ---
+  duration_ms: 0.757042
+  type: 'test'
+  ...
+# Subtest: imported stale serial cannot create duplicate raw lots or shipment IDs
+ok 33 - imported stale serial cannot create duplicate raw lots or shipment IDs
+  ---
+  duration_ms: 0.520083
+  type: 'test'
+  ...
+# Subtest: rounded quote accepts an exact-cash repeat and rejects one cent less atomically
+ok 34 - rounded quote accepts an exact-cash repeat and rejects one cent less atomically
+  ---
+  duration_ms: 0.283041
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 746.502125
