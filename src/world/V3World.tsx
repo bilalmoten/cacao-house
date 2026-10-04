@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {ArrowLeft,ArrowUpRight,Box,Compass,Factory,FlaskConical,Globe2,Leaf,MapPin,Minus,Plus,Ship,Store,Users,Wallet,BookOpen,PackageCheck} from 'lucide-react';
+import {ArrowLeft,ArrowUpRight,Box,Compass,LocateFixed,Factory,FlaskConical,Globe2,Leaf,MapPin,Minus,Plus,Ship,Store,Users,Wallet,BookOpen,PackageCheck} from 'lucide-react';
 import type {State} from '../../game/engine';
 import {capabilities} from '../../game/journey';
 import {createV3World,V3_DESTINATIONS,v3Hotspots,type V3Controller,type WorldLocation,type WorldAction,type V3ProjectedAnchor} from './scene';
@@ -11,7 +11,7 @@ type CalloutRect={left:number;top:number;right:number;bottom:number};
 const overlap=(a:CalloutRect,b:CalloutRect,padding=0)=>Math.max(0,Math.min(a.right+padding,b.right)-Math.max(a.left-padding,b.left))*Math.max(0,Math.min(a.bottom+padding,b.bottom)-Math.max(a.top-padding,b.top));
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 
-export default function V3World({s,location,interior,onInteract,highlight,sceneArea}:{s:State;location:WorldLocation;interior:boolean;onInteract:(action:WorldAction)=>void;highlight?:string;sceneArea?:string}){
+export default function V3World({s,location,interior,onInteract,highlight,sceneArea,inactive=false}:{s:State;location:WorldLocation;interior:boolean;onInteract:(action:WorldAction)=>void;highlight?:string;sceneArea?:string;inactive?:boolean}){
  const host=useRef<HTMLDivElement>(null),world=useRef<V3Controller|null>(null),labels=useRef<Record<string,HTMLButtonElement|null>>({}),leaders=useRef<Record<string,SVGGElement|null>>({}),labelLayer=useRef<HTMLDivElement>(null),lastPoints=useRef<Record<string,V3ProjectedAnchor>>({}),placements=useRef(new Map<string,string>()),pick=useRef(onInteract);
  const [failed,setFailed]=useState(false),[ready,setReady]=useState(false),[area,setArea]=useState(0),[selection,setSelection]=useState('');
  pick.current=onInteract;
@@ -36,7 +36,7 @@ export default function V3World({s,location,interior,onInteract,highlight,sceneA
     let score=distance+rank*3+(placements.current.get(id)===key?-7:0);
     for(const taken of occupied)score+=overlap(rect,taken,6)*1000;
     for(const obstacle of obstacles)score+=overlap(rect,obstacle,5)*100;
-    for(const target of targets){score+=overlap(rect,target.bounds,3)*.5;if(target.x>rect.left-6&&target.x<rect.right+6&&target.y>rect.top-6&&target.y<rect.bottom+6)score+=6000;}
+    for(const target of targets){score+=overlap(rect,target.bounds,3)*(location==='sf'&&!interior?.12:.5);if(target.x>rect.left-6&&target.x<rect.right+6&&target.y>rect.top-6&&target.y<rect.bottom+6)score+=6000;}
     if(score<bestScore){bestScore=score;best=rect;bestKey=key}
    }
    if(best){placements.current.set(id,bestKey);occupied.push(best);result.push({id,el,rect:best,point,tx,ty})}
@@ -53,11 +53,12 @@ export default function V3World({s,location,interior,onInteract,highlight,sceneA
  },[location,interior]);
  useEffect(()=>{world.current?.setState(s)},[s]);
  useEffect(()=>{world.current?.setArea(area)},[area]);
- useEffect(()=>{if(sceneArea){const n=destination.areas.findIndex(a=>a.id===sceneArea);if(n>=0)setArea(n)}},[sceneArea,location]);
+ useEffect(()=>{if(sceneArea){const n=destination.areas.findIndex(a=>a.id===sceneArea);if(n>=0)setArea(n)}},[sceneArea,location,interior]);
+ useEffect(()=>{if(location==='sf'&&!interior&&highlight){const spot=spots.find(p=>p.id===highlight);if(spot&&spot.area>=0)setArea(spot.area)}},[highlight,location,interior]);
  useEffect(()=>{world.current?.highlight(highlight||selection)},[highlight,selection,ready]);
  useEffect(()=>{if(!ready||failed)return;const observer=new ResizeObserver(()=>layout.current(lastPoints.current));if(host.current)observer.observe(host.current);for(const el of Object.values(labels.current))if(el)observer.observe(el);const app=host.current?.closest('.v3-app');app?.querySelectorAll('.v3-hud,.v3-bottom').forEach(el=>observer.observe(el));let live=true;document.fonts?.ready.then(()=>{if(live)layout.current(lastPoints.current)});layout.current(lastPoints.current);return()=>{live=false;observer.disconnect()}},[ready,failed,location,interior,visible.map(p=>p.id+':'+p.label).join('|')]);
  function interact(id:string){setSelection(id);world.current?.highlight(id);onInteract(id)}
- return <section className={`v3-world ${interior?'v3-interior':''} ${failed?'v3-world-failed':''}`} aria-label={`${destination.name} ${interior?'factory interior':'interactive world'}`}>
+ return <section className={`v3-world ${location==='sf'?'sf-world':''} ${interior?'v3-interior':''} ${failed?'v3-world-failed':''}`} inert={inactive} aria-hidden={inactive||undefined} aria-label={`${destination.name} ${interior?'factory interior':'interactive world'}`}>
   <div className="v3-canvas" ref={host}/><div className="v3-scene-shade"/>
   {!ready&&!failed&&<div className="v3-world-loading"><Compass size={24}/><span>Arriving in {destination.name}…</span></div>}
   <div className="v3-place-caption"><span>{interior?'THE FACTORY FLOOR':destination.region}</span><strong>{interior?(location==='sf'?'The original workshop':location==='oakland'?'Oakland Factory':'Turin Works'):destination.name}</strong><small>{interior?'Select a machine, person or workbench':destination.areas[area]?.description}</small></div>
@@ -65,9 +66,9 @@ export default function V3World({s,location,interior,onInteract,highlight,sceneA
   {!failed&&<div className="v3-object-labels" ref={labelLayer}><svg className="v3-callout-leaders" aria-hidden="true" focusable="false">{visible.map(p=><g key={p.id} ref={el=>{leaders.current[p.id]=el}} data-action={p.id} style={{visibility:'hidden'}}><line/><circle className="v3-callout-target" r="2.5"/></g>)}</svg>{visible.map(p=>{const Icon=icons[p.id.split(':')[0]]||MapPin;const learned=p.id.startsWith('discovery:')&&s.travel.learned.includes(p.id.slice(10) as never);return <button key={p.id} ref={el=>{labels.current[p.id]=el}} className={`v3-object-label ${highlight===p.id||selection===p.id?'is-highlighted':''} ${p.id==='factory'&&s.growth.factories.some(f=>f.id===(location==='sf'?'quay':location==='oakland'?'riverside':'northline'))?'is-home':''} ${learned?'is-discovered':''}`} onClick={()=>interact(p.id)} aria-label={`${p.label}${learned?' · discovered':''}`}><span className="v3-object-icon"><Icon size={15}/></span><span>{p.label}</span>{learned?<span className="v3-discovered-mark">✓</span>:<ArrowUpRight className="v3-object-arrow" size={12}/>}</button>})}</div>}
   {failed&&<div className="v3-world-access"><Compass/><h2>Explore {destination.name}</h2><p>The 3D view is unavailable on this device. Every destination and activity is still accessible.</p><div>{spots.map(p=>{const Icon=icons[p.id.split(':')[0]]||MapPin;return <button key={p.id} onClick={()=>interact(p.id)}><Icon size={18}/>{p.label}<ArrowUpRight size={14}/></button>})}</div></div>}
   {!failed&&<>
-   <div className="v3-camera-tools" aria-label="Camera controls"><button aria-label="Zoom in" onClick={()=>world.current?.zoom(.18)}><Plus size={17}/></button><button aria-label="Zoom out" onClick={()=>world.current?.zoom(-.18)}><Minus size={17}/></button><button aria-label="Reset camera" onClick={()=>world.current?.reset()}><Compass size={18}/></button></div>
+   <div className="v3-camera-tools" aria-label="Camera controls"><button aria-label="Zoom in" onClick={()=>world.current?.zoom(.18)}><Plus size={17}/></button><button aria-label="Zoom out" onClick={()=>world.current?.zoom(-.18)}><Minus size={17}/></button><button aria-label={location==='sf'&&!interior?'Recenter city':'Reset camera'} onClick={()=>world.current?.reset()}>{location==='sf'&&!interior?<LocateFixed size={18}/>:<Compass size={18}/>}</button></div>
    {!interior&&<nav className="v3-neighbourhoods" aria-label={`Explore ${destination.name}`}>{destination.areas.map((a,i)=><button key={a.id} aria-pressed={area===i} onClick={()=>{setArea(i);setSelection('')}}><span className="v3-area-dot"/>{a.name}</button>)}</nav>}
-   <p className="v3-world-gesture">Drag to orbit <span>·</span> Tap a place to explore</p>
+   <p className="v3-world-gesture">{location==='sf'&&!interior?'Drag to pan':'Drag to orbit'} <span>·</span> {location==='sf'&&!interior?'Pinch to zoom':'Tap a place to explore'}</p>
   </>}
  </section>
 }
