@@ -30,10 +30,12 @@ export default function V3World({s,location,interior,onInteract,highlight,sceneA
    const tx=point.x+ox,ty=point.y+oy;
    const directions:Record<string,[number,number][]>= {above:[[0,-1],[-1,-1],[1,-1],[-1,0],[1,0],[0,1],[-1,1],[1,1]],below:[[0,1],[1,1],[-1,1],[1,0],[-1,0],[0,-1],[1,-1],[-1,-1]],left:[[-1,0],[-1,1],[-1,-1],[0,1],[0,-1],[1,0],[1,1],[1,-1]],right:[[1,0],[1,1],[1,-1],[0,1],[0,-1],[-1,0],[-1,1],[-1,-1]]};
    let best:CalloutRect|undefined,bestScore=Infinity,bestKey='';
-   for(const gap of[10,28,48])for(const [rank,[dx,dy]]of directions[point.side].entries()){
+   for(const gap of(location==='sf'&&!interior&&id==='factory'?[80,64,48,28,10]:[10,28,48]))for(const [rank,[dx,dy]]of directions[point.side].entries()){
     const left=clamp(tx+(dx===0?-width/2:dx<0?-width-gap:gap),ox+8,ox+canvasRect.width-width-8),top=clamp(ty+(dy===0?-height/2:dy<0?-height-gap:gap),oy+8,oy+canvasRect.height-height-8);
     const rect={left,top,right:left+width,bottom:top+height},key=`${dx}:${dy}:${gap}`,distance=Math.hypot(tx-clamp(tx,left,rect.right),ty-clamp(ty,top,rect.bottom));
     let score=distance+rank*3+(placements.current.get(id)===key?-7:0);
+    if(location==='sf'&&!interior&&dy===-1&&((id==='factory'&&dx===-1)||(id==='supplier'&&dx===0)))score-=1000;
+    if(location==='sf'&&!interior&&id==='factory'&&dx===-1&&dy===-1&&gap===80)score-=200;
     for(const taken of occupied)score+=overlap(rect,taken,6)*1000;
     for(const obstacle of obstacles)score+=overlap(rect,obstacle,5)*100;
     for(const target of targets){score+=overlap(rect,target.bounds,3)*(location==='sf'&&!interior?.12:.5);if(target.x>rect.left-6&&target.x<rect.right+6&&target.y>rect.top-6&&target.y<rect.bottom+6)score+=6000;}

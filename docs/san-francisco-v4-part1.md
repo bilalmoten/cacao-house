@@ -1,20 +1,24 @@
-# San Francisco V4, part 1
+# San Francisco V4: waterfront trial and fidelity rebuild
 
-Baseline: `3da145832e5fa3729679f6c3f7e37d0b4ca14abb`.
+Baseline: `3da145832e5fa3729679f6c3f7e37d0b4ca14abb`. This rebuild follows the two agreed generated targets and independent reviews of real browser screenshots. It replaces the small floating district with a connected shoreline, boulevard, crossing, raised city steps, Ferry arcade and clock tower, broad quay, mooring fingers, cabin boats, suspension bridge and layered green hills.
 
-This experiment rebuilds the San Francisco waterfront as procedural Three.js geometry: a copper-vessel workshop, ingredient depot, Ferry Building, connected streets and steps, harbor, cable car and distant bridge. It adds bounded pan/scroll navigation, pinch zoom, reliable recentering, surface-based picking and district-aware interaction. Mobile controls expose Explore, Orders and Next week, with direct local business navigation inside focused management sheets. Other cities retain their layouts and business rules. No paid asset services or new dependencies were used.
+The workshop has world-scaled brick courses, copper vessels, readable Cacao House lettering, glazed stocked interiors and warm lighting. The sage ingredient warehouse has open loading bays and a delivery van. Procedural geometry, canvas textures, environment lighting, contact shading and actual planar water reflections supply the visual finish; no paid asset service, new dependency or external credit was used.
 
-The engine, save schema and economic rules are unchanged. A story-progress sentence now acknowledges a delivered order. San Francisco offers open automatically when there are no commitments; accepting an offer switches to commitments.
+San Francisco exterior uses perspective framing, bounded drag/scroll pan, two-touch pinch, zoom controls and full recentering. Named places and visible mesh surfaces open the existing business interactions. Place labels avoid controls and show only the active district. Focused cream/green mobile controls expose Explore, Orders and Next week and direct local navigation inside management sheets. The existing engine, save schema and economics are unchanged by this fidelity rebuild. Other cities retain their layouts and rendering path.
 
 ## Validation
 
-- Dependency installation (`npm ci`, Node 24.19.0), typecheck, engine tests and production build passed.
-- Browser playtest: accepted the 35-case Leda order in W1, produced 90 cases, dispatched it and collected its delayed balance in W2. Replenished cocoa, sugar and milk through the ingredient UI and traded through W6. Each subsequent week produced 90 cases; cash at W3–W6 was $5,945.83, $6,669.66, $7,354.45 and $8,052.79. Save state survived reload exactly.
-- Browser checks cover drag and scroll pan, recenter, two-touch pinch, gesture suppression of picking, district navigation, actual workshop roof picking, interior production, ingredient/order panel navigation and purchases.
-- Viewports 320, 375, 390, 768 and 1440 pixels: no document overflow; ingredient quantity/purchase controls reachable by scrolling; sheets fit horizontally.
-- Independent screenshot critique found no release blocker. Supply and workshop sheets cover most of the mobile viewport; they are focused task screens rather than half-height cards.
-- Baseline and final captures use identical W1 save, waterfront camera, 390×844 and 1440×1000 viewports, reduced motion and device pixel ratio 1. Baseline: 491 draw calls / 37,122 triangles; final mobile: 331 / 41,070. Draw calls decreased about 33%; geometry increased about 11%. These are renderer counters, not physical-phone frame-rate benchmarks.
+- `npm ci` passed with Node 24.19.0; final typecheck, all six test files and production build passed. Package and lock files are unchanged.
+- Final production browser playtest accepted Leda’s 35-case W1 order, produced 90 cases, dispatched the order, collected its delayed balance, replenished cocoa/sugar/milk through the ingredient UI and traded through W6. W3–W6 cash was $5,945.83, $6,669.66, $7,354.45 and $8,052.79; 90 cases were produced each week. Save state survived reload exactly.
+- Browser checks cover drag/scroll pan, recenter, two-touch pinch, gesture suppression of picking, district navigation, actual workshop roof picking, production, ingredient/order navigation and purchases.
+- Viewports 320, 375, 390, 768 and 1440 pixels have no document overflow, scroll-reachable purchase controls and horizontally fitting sheets. Oakland, Paris, Turin, Guayaquil and Kyoto passed loading/control smoke checks.
+- Independent Sol 6.1 High critique accepted the final actual mobile, desktop and DPR2 phone captures for composition, warm hero materials, landmark hierarchy, legible lettering/controls and continuous bridge cables. Distant scenery and water reflections remain stylistic approximations of the generated targets.
+- Baseline and final screenshot pairs retain the same W1 save, waterfront/reset view, 390×844 and 1440×1000 viewports, reduced motion and DPR1. A supplementary native DPR2 phone pair uses the same state and framing. The rebuilt perspective camera intentionally frames the expanded district rather than preserving the old orthographic projection.
 
-## Limits
+## Rendering cost and limits
 
-Procedural geometry intentionally approximates the generated visual direction; it does not reproduce the target image's photographic lighting or exact composition. Trading and rendering checks use desktop Chromium with mobile touch emulation and software WebGL, not physical iPhone/Android hardware. The existing application bundle remains about 1 MB uncompressed (290 KB gzip); build reports a chunk-size warning. There is no new backend or cross-device save synchronization.
+The richer renderer is more expensive. Under Chromium SwiftShader software WebGL, the original mobile scene delivered about 10 observed frames/second; the final normal-motion scene delivered 7.75 after adaptive quality converged to 0.60 at DPR1. This is a software-GPU comparison, not a physical-phone FPS claim. The interface responded during animation, reduced motion stopped idle rendering and no browser errors were recorded.
+
+Static captures use full quality. Native high-DPR devices cap at 1.5 render pixels per CSS pixel and adaptive quality retains at least one render pixel per CSS pixel. Geometry is spatially batched and offscreen detail is culled; shadow, reflection and contact-shading refreshes are bounded and cached, with immediate camera/state invalidation. Touch movement temporarily bypasses contact shading. Final mobile beauty frames report 336 draw calls / 59,675 triangles; refresh frames include additional shadow/reflection/contact passes, so those counters cannot be compared directly to the old single-pass scene’s 491 / 37,122.
+
+Physical iPhone/Android performance remains unmeasured. The production bundle is about 1.10 MB uncompressed (312 KB gzip), with the existing large-chunk build warning. There is no new backend or cross-device save synchronization.
