@@ -1,0 +1,11 @@
+.v4-save-boundary {box-sizing:border-box;max-width:44rem;margin:0 auto;padding:2rem 1rem;color:#172c27;font:1rem/1.5 system-ui,sans-serif;}
+.v4-save-boundary * {box-sizing:border-box;}
+.v4-save-boundary h1 {font-size:1.8rem;}
+.v4-save-boundary h2 {font-size:1.2rem;}
+.v4-save-boundary section {margin:1.5rem 0;padding:1rem;border:1px solid #b9c5c0;border-radius:.6rem;}
+.v4-save-boundary label {display:grid;gap:.4rem;margin:1rem 0;}
+.v4-save-boundary input {font:inherit;padding:.6rem;max-width:100%;min-width:0;}
+.v4-save-boundary button {font:inherit;padding:.7rem 1rem;background:#184f45;color:white;border:0;border-radius:.35rem;cursor:pointer;}
+.v4-save-actions {display:flex;flex-wrap:wrap;gap:.6rem;}
+.v4-save-boundary :focus-visible {outline:3px solid #ca7a25;outline-offset:3px;}
+.v4-save-boundary [role=alert] {border-left:4px solid #184f45;padding:1rem;background:#eef5f2;}

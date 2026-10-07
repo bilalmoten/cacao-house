@@ -7,6 +7,7 @@ import FactoryPanel from './v3/FactoryPanel';
 import {SupplyPanel,OrdersPanel,MarketsPanel,ResearchPanel,AccountsPanel,ManagersPanel,ReportPanel,NewsPanel,Metrics} from './v3/CommercePanels';
 import {TravelMap,Discovery,AcquireFactory,CITY_NAMES} from './v3/WorldPanels';
 import './v3/app.css';
+import './v3/fonts.css';
 const SAVE='cacao-house-save-v2',BACKUP=SAVE+'-backup';
 function savedItem(key:string){try{return localStorage.getItem(key)}catch{return null}}
 type Panel={id:string;detail?:string};

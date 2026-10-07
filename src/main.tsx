@@ -1,4 +1,4 @@
 import React from 'react';
 import {createRoot} from 'react-dom/client';
-import App from './App';
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+import Root from './v4/Root';
+createRoot(document.getElementById('root')!).render(<React.StrictMode><Root/></React.StrictMode>);

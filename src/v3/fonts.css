@@ -1,0 +1,2 @@
+/* Keep the legacy entry usable when an external font service is unavailable.
+   Existing DM Sans / Playfair declarations fall back to system UI and Georgia. */

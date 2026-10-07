@@ -1,9 +1,12 @@
+import type{CommercialAppearance}from'./CommercialAppearance';
 import * as T from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createHarbourWater} from './HarbourWater';
 
 type Side = 'above' | 'below' | 'left' | 'right';
 export interface SanFranciscoContext {
+ onCommerce?:(update:(appearance:CommercialAppearance)=>void)=>void;
+ onBrand?:(update:(name:string,primary:string,accent:string)=>void)=>void;
  ground:T.Group;
  mesh:(p:T.Object3D,geometry:T.BufferGeometry,c:string,x?:number,y?:number,z?:number,metal?:number)=>T.Mesh;
  box:(p:T.Object3D,x:number,y:number,z:number,w:number,h:number,d:number,c:string,metal?:number)=>T.Mesh;
@@ -148,7 +151,8 @@ export function buildSanFrancisco(c:SanFranciscoContext){
  box(factory,0,3.68,2.535,5.92,.58,.11,'#a15d35');box(factory,0,3.98,2.58,6.06,.045,.08,'#d49a66');
  const houseNameCanvas=document.createElement('canvas');houseNameCanvas.width=1024;houseNameCanvas.height=128;const houseNameContext=houseNameCanvas.getContext('2d')!;
  houseNameContext.clearRect(0,0,1024,128);houseNameContext.font='700 91px Georgia';houseNameContext.textAlign='center';houseNameContext.textBaseline='middle';houseNameContext.fillStyle='#ffe8bd';houseNameContext.fillText('CACAO HOUSE',512,68,975);
- const houseNameTexture=new T.CanvasTexture(houseNameCanvas);houseNameTexture.colorSpace=T.SRGBColorSpace;textures.push(houseNameTexture);
+ const houseNameTexture=new T.CanvasTexture(houseNameCanvas);
+ c.onBrand?.((name,primary,accent)=>{houseNameContext.fillStyle=primary;houseNameContext.fillRect(0,0,1024,128);houseNameContext.fillStyle=accent;houseNameContext.fillRect(0,118,1024,10);houseNameContext.fillStyle='#ffffff';houseNameContext.fillText(name.toUpperCase(),512,68,975);houseNameTexture.needsUpdate=true;});houseNameTexture.colorSpace=T.SRGBColorSpace;textures.push(houseNameTexture);
  const houseName=mesh(factory,new T.PlaneGeometry(5.62,.57),'#fff',0,3.68,2.599);houseName.material=new T.MeshBasicMaterial({map:houseNameTexture,transparent:true});
  interactive(factory,'factory');bindAnchor(factory,'factory',[0,4.05,2.5],'left');merge(factory);
  const copperOriginals=[mat(copper,.78),mat(copper,.72)];factory.traverse(o=>{if(o instanceof T.Mesh){if(copperOriginals.includes(o.material as T.MeshStandardMaterial))o.material=copperSurface;else if(o.material===mat('#d18b4c',.8))o.material=copperCrown;}});

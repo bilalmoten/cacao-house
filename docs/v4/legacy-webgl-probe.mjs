@@ -1,0 +1,9 @@
+import {createRequire} from 'node:module';
+import {writeFile} from 'node:fs/promises';
+const require=createRequire('/tmp/cacao-v4-qa/package.json');const {chromium}=require('playwright');
+const results=[];
+for(const mode of ['software-webgl','default']){
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox',...(mode==='software-webgl'?['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']:[])]});
+ try{const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.emulateMedia({reducedMotion:'reduce'});await page.goto('http://127.0.0.1:5174/',{waitUntil:'networkidle',timeout:20000});let interaction=true;try{await page.getByRole('button',{name:'Play without tutorial',exact:true}).click({timeout:10000});}catch(error){interaction=false;errors.push(error.message.slice(0,250));}try{await page.locator('.v3-canvas canvas,.v3-world-access').first().waitFor({state:'attached',timeout:10000});}catch(error){errors.push(error.message.slice(0,250));}const result=await page.evaluate(()=>{const canvas=document.querySelector('.v3-canvas canvas'),gl=canvas&&(canvas.getContext('webgl2')||canvas.getContext('webgl'));const extension=gl?.getExtension('WEBGL_debug_renderer_info');return {bodyText:document.body.innerText.slice(0,600),canvas:Boolean(canvas),fallback:Boolean(document.querySelector('.v3-world-access')),size:canvas?{width:canvas.width,height:canvas.height}:null,renderer:gl?gl.getParameter(extension?extension.UNMASKED_RENDERER_WEBGL:gl.RENDERER):null};});const screenshot=`docs/v4/legacy-webgl-${mode}.png`;await page.screenshot({path:screenshot});results.push({mode,interaction,...result,errors,screenshot});}finally{await browser.close();}
+}
+await writeFile('docs/v4/legacy-webgl-probe-results.json',JSON.stringify(results,null,2)+'\n');console.log(JSON.stringify(results));
