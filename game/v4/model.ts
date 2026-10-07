@@ -152,6 +152,7 @@ export type V4Command =
   | {id:string;type:'visit-location';cityId:string;locationId:string}
   | {id:string;type:'preview-week'}
   | {id:string;type:'view-report';query:ReportQuery}
+  | ({id:string;type:'commercial-management-policy'} & import('./commercial-management.ts').CommercialPolicy)
   | {id:string;type:'assign-consumer-lead';channelId:string;employeeId:string}
   | {id:string;type:'relationship-choice';arcId:string;choice:0|1}
   | {id:string;type:'appoint-executive';employeeId:string;role:'finance'|'operations'|'brand'}

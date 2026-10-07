@@ -1,3 +1,4 @@
+import {resolveCommercialManagement} from './commercial-management.ts';
 import {resolveWorkforce} from './workforce.ts';
 import {portfolioFixed,globalWeeklyReview}from './global.ts';
 import {supplyMinimumFixed} from './supply-agreements.ts';
@@ -40,6 +41,7 @@ function closeWeek(state:V4State,intent:WeekIntent,previewSample?:number):WeekOu
     resolveFranchiseSupply(draft,event);
     interruptions.push(...prepareOpening(draft,event));
     prepareEquipmentOperations(draft,event,previewSample??0);
+    const commercial=resolveCommercialManagement(draft,event);draft=commercial.state;interruptions.push(...commercial.interruptions);
     const delegated=delegationPlan(draft,intent.tickId,event,previewSample!==undefined);draft=delegated.state;interruptions.push(...delegated.interruptions);
     draft.lastProduction=commitProduction(draft,event);
     closeEquipmentOperations(draft,event);
@@ -75,7 +77,7 @@ function closeWeek(state:V4State,intent:WeekIntent,previewSample?:number):WeekOu
     const obligations={receivableCents:accountBalance(draft,'receivables'),depositCents:Math.max(0,-accountBalance(draft,'customer-deposits')),arrearsCents:Math.max(0,-accountBalance(draft,'arrears'))};
     event.details.operatingActuals=JSON.stringify({production,inventory,obligations});
     draft.snapshots.push({production,inventory,obligations,sales:structuredClone(draft.lastSales),tickId:event.id,week:state.week,openingCashCents,closingCashCents:draft.cashCents,operatingFlowCents:flows.operating,investingFlowCents:flows.investing,financingFlowCents:flows.financing,...summary,sourceEventIds:[...new Set([...entries.map(e=>e.eventId),event.id])]});
-    globalWeeklyReview(draft,event);
+    globalWeeklyReview(draft,event,interruptions);
     finishTravel(draft,event);
     publishUpdates(draft,event,interruptions);
     draft.week++;draft.weekOpeningCashCents=draft.cashCents;draft.weekLedgerStartIndex=draft.ledger.length;

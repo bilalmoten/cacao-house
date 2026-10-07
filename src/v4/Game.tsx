@@ -1,9 +1,10 @@
+import {Anniversary} from './Anniversary';
 import {Franchise} from './Franchise';
 import{worldSourceRoute}from'../../game/v4/world-sources';
 import{campaignChapters}from'../../game/v4/campaign';
 import{ConsumerChannels}from'./ConsumerChannels';
 import {Delegation} from './Delegation';
-import {managementTurn} from '../../game/v4/management';
+import {managementSteps} from '../../game/v4/management';
 import {Network} from './Network';
 import {Travel} from './Travel';
 import {RegionalPlace} from './RegionalPlace';
@@ -29,16 +30,16 @@ import { money, type PlayerAction } from './types';
 import '../v3/app.css';
 import './game.css';
 const Legacy = lazy(() => import('../App'));
-type Panel = 'franchise' | 'consumer' | 'delegation' | 'network' | 'travel' | 'place' | 'campaign' | 'lab' | 'equipment' | 'people' | 'trial' | 'supplies' | 'production' | 'orders' | 'commitments' | 'inbox' | 'reports' | 'explore' | 'office' | 'guide' | 'settings';
+type Panel = 'anniversary' | 'franchise' | 'consumer' | 'delegation' | 'network' | 'travel' | 'place' | 'campaign' | 'lab' | 'equipment' | 'people' | 'trial' | 'supplies' | 'production' | 'orders' | 'commitments' | 'inbox' | 'reports' | 'explore' | 'office' | 'guide' | 'settings';
 const PREVIEW_SLOT = 'preview-2026-10-06';
-const titles: Record<Panel, string> = {franchise:'Partners & field support',consumer:'Stores & ecommerce',delegation:'Management authority',network:'Premises & logistics',travel:'Travel & introductions',place:'Regional workplace',campaign:'Your house story', lab:'Recipe development lab', equipment: 'The first line', people: 'Your team', trial: 'Process studio', supplies: 'Rafi’s pantry', production: 'Production & prices', orders: 'Leda’s buyer desk', commitments: 'Cash & commitments', inbox: 'Messages', reports: 'Reports Centre', explore: 'Explore San Francisco', office: 'The house office', guide: 'Nadia’s guidance', settings: 'Settings & saves' };
+const titles: Record<Panel, string> = {anniversary:'The headquarters anniversary',franchise:'Partners & field support',consumer:'Stores & ecommerce',delegation:'Management authority',network:'Premises & logistics',travel:'Travel & introductions',place:'Regional workplace',campaign:'Your house story', lab:'Recipe development lab', equipment: 'The first line', people: 'Your team', trial: 'Process studio', supplies: 'Rafi’s pantry', production: 'Production & prices', orders: 'Leda’s buyer desk', commitments: 'Cash & commitments', inbox: 'Messages', reports: 'Reports Centre', explore: 'Explore San Francisco', office: 'The house office', guide: 'Nadia’s guidance', settings: 'Settings & saves' };
 const places = [{ id: 'workshop', name: 'Waterfront workshop', detail: 'Inspect the floor; configure machines, crew and production.' }, { id: 'rafi-pantry', name: 'Rafi’s pantry', detail: 'Ingredient quality, packaging, purchasing and dated freight.' }, { id: 'ferry-cafe', name: 'Ferry Café · Leda', detail: 'A real order, its delivery promise and settlement terms.' }, { id: 'office', name: 'House office', detail: 'Cash, commitments, reports and your next decision.' },{id:'flagship',name:'Owned store',detail:'Visit the real local store and review its assortment, customer service and contribution.'}];
 function download(raw: string, name: string) { const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' })), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 export default function Game() {
     const db = useRef(new IndexedSlots()), live = useRef<{
         state: V4State;
         revision: number;
-    } | null>(null), lock = useRef(false), [state, setState] = useState<V4State | null>(null), [loaded, setLoaded] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [panel, setPanel] = useState<Panel | null>(null), [interior, setInterior] = useState(false), [place,setPlace]=useState('workshop'),[sourceTarget,setSourceTarget]=useState<ReturnType<typeof worldSourceRoute>|undefined>(),[area, setArea] = useState('quay'), [newHouse,setNewHouse]=useState(false),[legacy, setLegacy] = useState(false), file = useRef<HTMLInputElement>(null);
+    } | null>(null), lock = useRef(false), [state, setState] = useState<V4State | null>(null), [loaded, setLoaded] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [panel, setPanel] = useState<Panel | null>(null), [interior, setInterior] = useState(false), [anniversaryGuest,setAnniversaryGuest]=useState('nadia'),[place,setPlace]=useState('workshop'),[sourceTarget,setSourceTarget]=useState<ReturnType<typeof worldSourceRoute>|undefined>(),[area, setArea] = useState('quay'), [newHouse,setNewHouse]=useState(false),[legacy, setLegacy] = useState(false), file = useRef<HTMLInputElement>(null);
     const accept = useCallback((r: {
         state: V4State;
         revision: number;
@@ -96,7 +97,7 @@ export default function Game() {
         return; if(state.currentCityId!=='sf'){const destinations=regionalPlaces(state.currentCityId),p=destinations.find(p=>p.id===id);if(!p){setPanel('explore');return;}if(!await dispatch({type:'visit-location',cityId:state.currentCityId,locationId:p.id}))return;setPlace(p.id);setArea(p.area?'operations':'street');setInterior(true);setPanel(task??'place');return;} const location = places.some(p => p.id === id) ? id : id === 'sf-storage' || id === 'sf-workshop' ? 'workshop' : id === 'rafi' ? 'rafi-pantry' : 'office'; if (!await dispatch({ type: 'visit-location', cityId: 'sf', locationId: location }))
         return; setArea(location === 'office' || location === 'ferry-cafe' ? 'hill' : 'quay'); setPlace(location);setInterior(location === 'workshop'||location==='office'||location==='flagship'); setPanel(task ?? (location === 'workshop' ? null : location === 'rafi-pantry' ? 'supplies' : location === 'ferry-cafe' ? 'orders' : location==='flagship'?'consumer':'office')); }
     function drillSource(id:string){if(!state)return;const target=worldSourceRoute(state,id);if(target.cityId!==state.currentCityId){setSourceTarget(target);setPanel('travel');return;}void visit(target.locationId,target.franchise?'franchise':target.consumer?'consumer':undefined);}
-    function interact(id: string) {if(state?.currentCityId==='sf'&&interior&&['reports','campaign','people','delegation','commercial','display'].includes(id)){setPanel(id==='commercial'||id==='display'?'consumer':id as Panel);return;} if(id==='terminal'){setPanel('travel');return;}if(id.startsWith('place:')){void visit(id.slice(6));return;}if(state&&state.currentCityId!=='sf'&&id!=='exterior'){if(['production','machines','staff','inventory','research','dispatch'].includes(id)&&regionalPlaces(state.currentCityId).find(p=>p.id===place)?.kind==='production'){if(!state.factories.some(f=>f.cityId===state.currentCityId)){setPanel('network');return;}setPanel(id==='production'?'production':id==='machines'?'equipment':id==='staff'?'people':id==='inventory'?'supplies':id==='research'?'trial':'orders');return;}setPanel(id==='reports'?'reports':id==='campaign'?'campaign':id==='delegation'?'delegation':'place');return;} if (id === 'exterior') {
+    function interact(id: string) {if(id.startsWith('anniversary:')&&state?.campaign.flags['global-finale']){setAnniversaryGuest(id.slice(12));setPanel('anniversary');return;}if(state?.currentCityId==='sf'&&interior&&['reports','campaign','people','delegation','commercial','display'].includes(id)){setPanel(id==='commercial'||id==='display'?'consumer':id as Panel);return;} if(id==='terminal'){setPanel('travel');return;}if(id.startsWith('place:')){void visit(id.slice(6));return;}if(state&&state.currentCityId!=='sf'&&id!=='exterior'){if(['production','machines','staff','inventory','research','dispatch'].includes(id)&&regionalPlaces(state.currentCityId).find(p=>p.id===place)?.kind==='production'){if(!state.factories.some(f=>f.cityId===state.currentCityId)){setPanel('network');return;}setPanel(id==='production'?'production':id==='machines'?'equipment':id==='staff'?'people':id==='inventory'?'supplies':id==='research'?'trial':'orders');return;}setPanel(id==='reports'?'reports':id==='campaign'?'campaign':id==='delegation'?'delegation':'place');return;} if (id === 'exterior') {
         setInterior(false);
         close();
         return;
@@ -122,7 +123,24 @@ export default function Game() {
         void visit('workshop', id === 'production' ? 'production' : id === 'machines' ? 'equipment' : id === 'inventory' ? 'supplies' : id === 'research' ? 'trial' : state&&state.campaign.stage>=2?'network':'orders');
         return;
     } setPanel('explore'); }
-    async function reviewTurn(weeks:4|13){if(lock.current||!live.current)return;lock.current=true;setBusy(true);try{const initial=live.current,existing=initial.state.managementReview,review=managementTurn(initial.state,weeks,existing?.weeks===weeks?existing.id:'review:'+crypto.randomUUID());let committed=0;for(const checkpoint of review.checkpoints){const saved=await db.current.commit(PREVIEW_SLOT,checkpoint,live.current!.revision,true);if(!saved.ok){setMessage(saved.error+' Earlier review weeks remain saved.');return;}accept(saved);committed++;await new Promise<void>(resolve=>setTimeout(resolve,0));}setMessage(`${committed} operating weeks saved. ${review.reason}`);if(committed)setPanel('reports');}finally{lock.current=false;setBusy(false);}}
+    async function reviewTurn(weeks:4|13){
+        if(lock.current||!live.current)return;
+        lock.current=true;setBusy(true);
+        try{
+            const existing=live.current.state.managementReview,id=existing?.weeks===weeks?existing.id:'review:'+crypto.randomUUID(),steps=managementSteps(live.current.state,weeks,id);
+            let committed=0,result=steps.next();
+            while(!result.done){
+                const saved=await db.current.commit(PREVIEW_SLOT,result.value,live.current!.revision,true);
+                if(!saved.ok){steps.return({state:live.current!.state,reason:saved.error});setMessage(saved.error+' Earlier review weeks remain saved.');return;}
+                accept(saved);committed++;
+                setMessage(`${committed} operating weeks saved; reviewing the next commitments…`);
+                await new Promise<void>(resolve=>setTimeout(resolve,0));
+                result=steps.next();
+            }
+            setMessage(`${committed} operating weeks saved. ${result.value.reason}`);
+            if(committed)setPanel('reports');
+        }finally{lock.current=false;setBusy(false);}
+    }
     async function closeWeek() { if (lock.current || !live.current)
         return; lock.current = true; setBusy(true); try {
         const current = live.current, r = resolveWeek(current.state, { tickId: 'close:' + current.state.week, expectedWeek: current.state.week });
@@ -163,7 +181,8 @@ export default function Game() {
         case 'people': return <People {...common}/>;
         case 'trial': return <><Trial {...common}/>{house.campaign.stage>=2&&<button className="v4-button secondary" onClick={()=>setPanel('lab')}>Enter recipe development lab</button>}</>;
         case 'lab': return <RecipeLab {...common}/>;
-        case 'campaign':return <Campaign onNewHouse={()=>{download(serializeV4(state),'cacao-house-v4-completed-house.json');setNewHouse(true);setPanel(null);}} {...common} onWorld={id=>void visit(id)} onTravel={()=>setPanel('travel')}/>;
+        case 'anniversary':return <Anniversary state={state} guestId={anniversaryGuest}/>;
+        case 'campaign':return <Campaign onSource={drillSource} onNewHouse={()=>{download(serializeV4(state),'cacao-house-v4-completed-house.json');setNewHouse(true);setPanel(null);}} {...common} onWorld={id=>void visit(id)} onTravel={()=>setPanel('travel')}/>;
         case 'supplies': return <Supplies {...common}/>;
         case 'production': return <Production {...common}/>;
         case 'orders': return <Orders {...common}/>;

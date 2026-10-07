@@ -1,3 +1,4 @@
+import {configureCommercialManagement} from './commercial-management.ts';
 import{assignConsumerLead}from './commercial-leads.ts';
 import {chooseRelationship}from './relationships.ts';
 import {appointExecutive,allocatePortfolio}from './global.ts';
@@ -82,6 +83,7 @@ function apply(state:V4State,command:V4Command,simulation:boolean):CommandResult
       case 'write-franchise-standard':franchiseStandard(draft,command,event);break;
       case 'franchise-support':configureFranchiseSupport(draft,command,event);break;
       case 'start-consumer-campaign':startConsumerCampaign(draft,command,event);break;
+      case 'commercial-management-policy':configureCommercialManagement(draft,command,event);break;
       case 'stop-consumer-campaign':stopConsumerCampaign(draft,command.campaignId,event);break;
       case 'open-consumer-channel':openConsumerChannel(draft,command,event);break;
       case 'consumer-policy':consumerPolicy(draft,command,event);break;

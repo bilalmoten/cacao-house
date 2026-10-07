@@ -1,3 +1,8 @@
+import {weeklyFixed} from './campaign.ts';
+import {portfolioFixed} from './global.ts';
+import {supplyMinimumFixed} from './supply-agreements.ts';
+import {consumerFixed} from './channels.ts';
+import {franchiseFixed} from './franchise.ts';
 import {teamFixed} from './teams.ts';
 import {activeEmployee,retainedSiteFixed} from './site-recovery.ts';
 import {machineLeaseFixed} from './machine-orders.ts';
@@ -36,7 +41,7 @@ export function financeReport(state:V4State,period:ReportPeriod){
  return {basis,period:{fromWeek:period.fromWeek,toWeek},cash,pnl,balance:{...assets,...liabilities,equityCents,totalAssetsCents:Object.values(assets).reduce((n,v)=>n+v,0),totalLiabilitiesCents:Object.values(liabilities).reduce((n,v)=>n+v,0)},trace:entries.map(entry=>({entryId:entry.id,eventId:entry.eventId,week:entry.week,description:entry.description,locationId:location(state,entry),postings:structuredClone(entry.postings)}))};
 }
 export function overviewReport(state:V4State){
- const latestActual=state.snapshots.at(-1)??null,weeklyObligations=state.employees.filter(activeEmployee).reduce((n,e)=>n+e.wageCents,0)+state.factories.filter(f=>f.active).reduce((n,f)=>n+f.rentCents,0)+state.loans.filter(l=>l.status!=='settled').reduce((n,l)=>n+l.installmentCents,0);
+ const latestActual=state.snapshots.at(-1)??null,weeklyObligations=weeklyFixed(state);
  return {basis:'current planning position' as const,week:state.week,cashCents:state.cashCents,protectedCashCents:protectedCash(state),discretionaryCashCents:Math.max(0,state.cashCents-protectedCash(state)),runwayWeeks:weeklyObligations?state.cashCents/weeklyObligations:null,runwayBasis:'Cash divided by current weekly fixed obligations; excludes future sales and variable procurement',latestActual:latestActual?structuredClone(latestActual):null,locations:state.factories.map(f=>({id:f.id,cityId:f.cityId,active:f.active}))};
 }
 export function obligationsReport(state:V4State){
@@ -47,7 +52,12 @@ export function obligationsReport(state:V4State){
  const unpaid=state.unpaidObligations.map(o=>({id:o.id,kind:'overdue',label:o.account,week:o.sinceWeek,cents:0,arrearsCents:o.cents,locationId:'office'}));
  const engineering=state.engineeringJobs.filter(j=>j.status==='booked').map(j=>({id:j.id,kind:'engineering',label:'Paid engineer trial — '+state.employees.find(e=>e.id===j.employeeId)?.name,week:j.dueWeek,cents:0,arrearsCents:0,locationId:j.factoryId}));
  const upkeep=[...teamFixed(state),...retainedSiteFixed(state),...machineLeaseFixed(state),...maintenanceFixed(state)].filter(f=>f.amount).map(f=>({id:'upkeep:'+f.entityId,kind:'maintenance',label:f.label,week:state.week,cents:f.amount,arrearsCents:0,locationId:'factoryId' in f.scope?f.scope.factoryId:'office'}));
- return [...upkeep,...loan,...payroll,...rent,...contracts,...unpaid,...engineering].sort((a,b)=>a.week-b.week||a.id.localeCompare(b.id));
+ const regional=[...portfolioFixed(state),...supplyMinimumFixed(state)].map(f=>({id:'regional:'+f.entityId,kind:'regional-commitment',label:f.label,week:state.week,cents:f.amount,arrearsCents:0,locationId:state.supplyAgreements?.find(a=>a.id===f.entityId)?.warehouseId??regionCities[f.scope.regionId??'']?.[0]??'office'}));
+ const commercial=consumerFixed(state).flatMap(({channel:c,rentCents,staffCents})=>[{id:c.id+':rent',kind:'rent',label:'Consumer premises/platform rent',week:state.week,cents:rentCents,arrearsCents:0,locationId:c.id},{id:c.id+':payroll',kind:'payroll',label:'Consumer operating team payroll',week:state.week,cents:staffCents,arrearsCents:0,locationId:c.id}]);
+ const field=franchiseFixed(state).map(({hub:h,rentCents})=>({id:h.id+':rent',kind:'rent',label:'Regional support office rent',week:state.week,cents:rentCents,arrearsCents:0,locationId:h.id}));
+ const receiving=state.warehouses.filter(w=>w.rentCents).map(w=>({id:w.id+':rent',kind:'rent',label:'Receiving premises rent',week:state.week,cents:w.rentCents!,arrearsCents:0,locationId:w.id}));
+ const support=(state.franchiseCohorts??[]).filter(c=>!c.paused).map(c=>({id:c.id+':support',kind:'planned-support',label:'Planned cohort support; paid only when coverage is funded',week:state.week,cents:c.stores*(state.franchiseStandards?.find(p=>p.id===c.standardId)?.weeklySupportCents??0),arrearsCents:0,locationId:c.id}));
+ return [...regional,...commercial,...field,...receiving,...support,...upkeep,...loan,...payroll,...rent,...contracts,...unpaid,...engineering].sort((a,b)=>a.week-b.week||a.id.localeCompare(b.id));
 }
 export function supplyReport(state:V4State){return {basis:'current dated stock' as const,lots:state.inventory.map(l=>({...structuredClone(l),daysToGameExpiry:(l.expiryWeek-state.week+1)*7,locationId:l.locationId,sourceEventId:state.events.find(e=>e.entityIds.includes(l.id))?.id??state.ledger.find(e=>e.postings.some(p=>p.entityId===l.id))?.eventId??null})),warehouses:state.warehouses.map(w=>({id:w.id,cityId:w.cityId,occupancyMilliliters:storageOccupancy(state,w.id),capacityMilliliters:capacityAt(state,w.id,state.week),upgrades:structuredClone(w.upgrades)})),shipments:structuredClone(state.shipments),availableSuppliers:catalog.suppliers.filter(s=>state.knownSuppliers.includes(s.id)).map(s=>({id:s.id,name:s.name,cityId:s.cityId,leadWeeks:s.leadWeeks}))};}
 export function salesReport(state:V4State,period:ReportPeriod){
